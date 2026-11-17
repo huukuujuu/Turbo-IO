@@ -129,6 +129,7 @@ struct CodexToolDescriptor: Identifiable {
     @Published private(set) var busy = false
     @Published private(set) var selectedTaskID: String?
     @Published private(set) var hasUnknownDelivery = false
+    @Published private(set) var lastDeliveryError: String?
     private let defaults: UserDefaults
     private let key: (String) -> String?
     private let send: (String, String, String, Data?) async throws -> Data
@@ -144,6 +145,7 @@ struct CodexToolDescriptor: Identifiable {
         voiceToolsEnabled = defaults.bool(forKey: "companion.codex.v1.voiceTools")
         selectedTaskID = defaults.string(forKey: "companion.codex.v1.selected")
         hasUnknownDelivery = defaults.data(forKey: "companion.codex.v1.pending") != nil
+        lastDeliveryError = defaults.string(forKey: "companion.codex.v1.deliveryError")
     }
     func save(endpoint input: String, token: String, voiceTools: Bool) throws {
         guard !busy, !hasUnknownDelivery else { throw CodexBridgeError.unknownDelivery }
@@ -191,8 +193,13 @@ struct CodexToolDescriptor: Identifiable {
                   object["accepted"] as? Bool == true, let id = object["taskId"] as? String else { throw CodexBridgeError.invalidResponse }
             selectedTaskID = id; defaults.set(id, forKey: prefix + "selected")
             defaults.removeObject(forKey: prefix + "pending"); hasUnknownDelivery = false
+            lastDeliveryError = nil; defaults.removeObject(forKey: prefix + "deliveryError")
             status = "요청 전송됨 · 실제 결과는 작업 상태에서 확인하세요"; await refresh(); return id
-        } catch { status = "요청 결과 확인 필요 · 자동 중복 전송하지 않습니다"; throw error }
+        } catch {
+            lastDeliveryError = (error as? CodexBridgeError)?.localizedDescription ?? "네트워크 오류로 접수 결과를 확인하지 못했습니다"
+            defaults.set(lastDeliveryError, forKey: prefix + "deliveryError")
+            status = "요청 결과 확인 필요 · 자동 중복 전송하지 않습니다"; throw error
+        }
     }
     func retryPending() async {
         guard !busy, let pending = defaults.data(forKey: prefix + "pending"),
@@ -200,6 +207,14 @@ struct CodexToolDescriptor: Identifiable {
               object["endpoint"] as? String == endpoint, let path = object["path"] as? String,
               let body = object["body"] as? [String: Any], let data = try? JSONSerialization.data(withJSONObject: body), let token = key(endpoint) else { return }
         do { _ = try await deliver(path, data: data, token: token) } catch { status = "이전 요청 미확인 · 원래 요청 ID를 유지하며 중복 작업을 만들지 않았습니다" }
+    }
+    /// Only the explicit native confirmation calls this. Does not retry or cancel PC work.
+    func releaseUnconfirmedDelivery() {
+        guard !busy, hasUnknownDelivery else { return }
+        defaults.removeObject(forKey: prefix + "pending")
+        defaults.removeObject(forKey: prefix + "deliveryError")
+        hasUnknownDelivery = false; lastDeliveryError = nil
+        status = "아이폰의 전송 보류를 해제했습니다 · PC 작업은 그대로 유지됩니다"
     }
     func message(_ text: String, requestID: String = UUID().uuidString) async throws -> String {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf8.count <= 8192 else { throw CodexBridgeError.rejected("invalid_text") }

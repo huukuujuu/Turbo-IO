@@ -86,6 +86,11 @@ struct RootView: View {
             let arguments = ProcessInfo.processInfo.arguments
             #if DEBUG && COMPANION_DEVICE
             if arguments.contains("--diagnose-cloud-model") { store.voice.testModelConnection() }
+            if arguments.contains("--diagnose-codex-state") {
+                NSLog("[CodexStateDiagnostic] pending=%@ busy=%@ hasSelectedTask=%@",
+                      String(store.codex.hasUnknownDelivery), String(store.codex.busy),
+                      String(store.codex.selectedTaskID != nil))
+            }
             #endif
             if let index = arguments.firstIndex(of: "--ui-tab"), arguments.indices.contains(index + 1) {
                 store.selectedTab = Int(arguments[index + 1]) ?? 0

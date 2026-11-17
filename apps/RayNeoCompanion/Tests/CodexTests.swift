@@ -86,6 +86,30 @@ import XCTest
         XCTAssertEqual(ids.count, 1); await c.retryPending(); XCTAssertEqual(ids.count, 2); XCTAssertEqual(ids[0], ids[1])
         let restored = CodexCompanion(defaults: d, key: { _ in nil }); XCTAssertTrue(restored.hasUnknownDelivery)
     }
+    func testExplicitReleaseOnlyClearsLocalHoldWithoutNetworkOrTaskMutation() async throws {
+        let d = defaults()
+        d.set("https://test.invalid", forKey: "companion.codex.v1.endpoint")
+        d.set("existing-task", forKey: "companion.codex.v1.selected")
+        var calls = 0
+        let c = CodexCompanion(defaults: d, key: { _ in "synthetic" }, send: { _, _, _, _ in
+            calls += 1; throw CodexBridgeError.rejected("previous_delivery_unknown_do_not_replay")
+        })
+        do { _ = try await c.message("synthetic") } catch {}
+        XCTAssertTrue(c.hasUnknownDelivery)
+        XCTAssertTrue(c.lastDeliveryError?.contains("previous_delivery_unknown_do_not_replay") == true)
+        let restored = CodexCompanion(defaults: d, key: { _ in "synthetic" })
+        XCTAssertEqual(restored.lastDeliveryError, c.lastDeliveryError)
+        c.releaseUnconfirmedDelivery()
+        XCTAssertEqual(calls, 1)
+        XCTAssertFalse(c.hasUnknownDelivery)
+        XCTAssertNil(c.lastDeliveryError)
+        XCTAssertEqual(c.selectedTaskID, "existing-task")
+        c.select(nil)
+        XCTAssertNil(c.selectedTaskID)
+        let reopened = CodexCompanion(defaults: d, key: { _ in "synthetic" })
+        XCTAssertFalse(reopened.hasUnknownDelivery)
+        XCTAssertNil(reopened.lastDeliveryError)
+    }
     func testUnknownToolDoesNotSend() async {
         let d = defaults(); d.set("https://test.invalid", forKey: "companion.codex.v1.endpoint"); d.set(true, forKey: "companion.codex.v1.voiceTools")
         var calls = 0

@@ -12,6 +12,7 @@ struct CodexCompanionView: View {
     @State private var error: String?
     @State private var approval: CodexApproval?
     @State private var answers: [String: String] = [:]
+    @State private var confirmRelease = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -58,6 +59,10 @@ struct CodexCompanionView: View {
                         Text("동일한 요청 ID를 유지하며 중복 작업을 만들지 않습니다. 네트워크 복구 후 결과를 확인하세요. 확인 대기 내용은 기기에 임시 저장 후 삭제됩니다.")
                             .font(.caption)
                         Button("이전 요청 확인") { Task { await codex.retryPending() } }.disabled(codex.busy)
+                        if let cause = codex.lastDeliveryError { Text(cause).font(.caption).foregroundStyle(Palette.amber) }
+                        Text("이 상태에서는 새 전송과 작업 전환이 잠깁니다. 아래 답변은 마지막으로 조회한 내용이며 새 요청의 응답이 아닐 수 있습니다.").font(.caption)
+                        Button("PC 작업 확인 후 전송 보류 해제") { confirmRelease = true }
+                            .disabled(codex.busy).accessibilityIdentifier("codex-release-pending")
                     }
                 }
                 Card {
@@ -66,6 +71,7 @@ struct CodexCompanionView: View {
                         Button("새 작업으로 전환") { codex.select(nil) }.disabled(codex.busy || codex.hasUnknownDelivery)
                     }
                     Text(codex.selectedTaskID.map { "작업 " + String($0.prefix(8)) } ?? "다음 메시지는 새 작업을 만듭니다").font(.caption)
+                    if codex.busy { Text("요청을 전송하고 접수 결과를 기다리고 있습니다. 완료 전에는 작업을 전환할 수 없습니다.").font(.caption).foregroundStyle(Palette.amber) }
                     TextField("Codex에 요청할 내용…", text: $prompt, axis: .vertical).lineLimit(2...6).accessibilityIdentifier("codex-prompt")
                     Button("무작위 연결 테스트 입력") {
                         prompt = "Turbo IO 연결 테스트입니다. 파일이나 도구를 사용하지 말고 다음 문구만 응답하세요: Turbo IO Codex 확인 " + String(UUID().uuidString.prefix(6))
@@ -120,6 +126,11 @@ struct CodexCompanionView: View {
                     .font(.caption).foregroundStyle(Palette.muted)
             }.padding(22)
         }.background(Palette.background).navigationTitle("Codex 콘솔").navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog("아이폰의 전송 보류만 해제할까요?", isPresented: $confirmRelease) {
+                Button("PC 작업을 확인했으며 전송 보류 해제", role: .destructive) { codex.releaseUnconfirmedDelivery() }
+            } message: {
+                Text("PC에서 이미 실행된 작업은 취소되지 않습니다. PC 콘솔이나 작업 목록에서 기존 요청의 처리 여부를 확인하세요. 같은 내용을 다시 보내면 중복 실행될 수 있습니다. 해제 자체는 새 요청을 보내지 않습니다.")
+            }
             .toolbar(.visible, for: .navigationBar).preference(key: CompanionTabBarHiddenPreference.self, value: true)
             .onAppear { endpoint = codex.endpoint; voiceTools = codex.voiceToolsEnabled }
             .task {
