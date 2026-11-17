@@ -96,7 +96,7 @@ struct ConversationView: View {
                 Text("이 빌드는 안경 통신과 클라우드 서비스를 사용하지 않습니다. 실제 기기는 RayNeoCompanionDevice 빌드를 사용하세요. 데모는 실제 오디오 수집이 아닙니다.")
                     .font(.caption).foregroundStyle(Palette.muted)
             }
-            Text("답변 전송 후 10초간 후속 질문을 기다립니다. 이후 마이크를 끄고 답변 길이에 따라 총 30~180초 동안 화면을 유지합니다. 안경에서 직접 닫거나 새로 호출하면 이전 답변을 종료합니다. 전송 완료와 안경 표시 완료는 다릅니다.")
+            Text("연속 모드에서는 답변 표시 중에도 ASR을 유지해 끼어들기를 받습니다. 안경의 다음 대화 요청을 받으면 10초간 후속 질문을 기다린 뒤 종료합니다. 해당 신호가 없으면 답변 길이에 따른 예비 종료 시간을 사용합니다. 음성 세션 상한은 120초이며 ASR 사용량이 발생합니다.")
                 .font(.caption).foregroundStyle(Palette.amber)
             Button("현재 화면의 텍스트 지우기") { runtime.clearText() }.font(.caption)
         }

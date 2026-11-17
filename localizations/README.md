@@ -8,7 +8,7 @@ No firmware changes or automatic pairing are included.
 `ko.tsv` holds exact string translations; `fragments.tsv` covers interpolated view text.
 `python3 localizations/apply_ko.py` reapplies these source translations.
 Selection tags and saved model settings retain their original values.
-The device XcodeGen specification sets Korean permission descriptions and build 8.
+The device XcodeGen specification sets Korean permission descriptions and build 9.
 
 Build with the existing `project-device.yml`, `RayNeoCompanionDevice` scheme,
 and your own development team. Keep the existing bundle identifier and signing

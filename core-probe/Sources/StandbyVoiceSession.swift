@@ -31,6 +31,7 @@ final class StandbyVoiceSession {
     private var answerBytes = 0
     private var answerCharacters = 0
     private var readingDeadline: TimeInterval?
+    private var nextTurnSeen = false
     private var round = 0
     var enabled: Bool { target != nil }
     var active: Bool { phase == .recording || phase == .processing || phase == .displaying || phase == .reading }
@@ -85,14 +86,19 @@ final class StandbyVoiceSession {
             if packets == 1 { log?("持续会话收到首条非空type3；只统计长度，不保存音频") }
             return
         }
-        if continuousASREnabled, active, type == 11 {
-            // Next-turn request, NOT a render-complete ACK. Completion owns
-            // the idle deadline; early/missing/duplicate requests cannot change it.
-            log?("持续ASR收到type11 phase=\(phase.rawValue)；不改变回答完成后的静默计时")
+        if continuousASREnabled, active, phase != .reading, type == 11 {
+            // This is a request for the next turn, not a rendering ACK.
+            // Keep capture alive while displaying; only the first request
+            // shortens the fallback deadline. Duplicates cannot extend it.
+            if phase == .displaying, !nextTurnSeen, let wait = followupWait {
+                nextTurnSeen = true
+                followupWait = (wait.round, min(wait.deadline, now + 10))
+                log?("안경 다음 대화 요청 수신 · ASR을 유지하며 후속 질문 10초 대기")
+            }
             return
         }
         // 0x0B is a next-round event, not permission to start from idle.
-        guard type == 1 || (type == 11 && phase == .displaying) else { return }
+        guard type == 1 || (type == 11 && (phase == .displaying || phase == .reading)) else { return }
         guard phase == .idle || phase == .displaying || phase == .reading || (cloudEnabled && phase == .processing) else { return }
         deadline = nil // Supersede the old display exit; never closes a newer round.
         followupWait = nil
@@ -107,6 +113,7 @@ final class StandbyVoiceSession {
         transcript = ""; transcriptFinal = false
         answerBytes = 0
         answerCharacters = 0
+        nextTurnSeen = false
         guard write(.startAudio) else { failRound(); return }
         deadline = now + (cloudEnabled ? 20 : 8)
         setPhase(.recording)
@@ -146,7 +153,8 @@ final class StandbyVoiceSession {
         if phase == .displaying, let wait = followupWait,
            wait.round == cloudRoundID, now >= wait.deadline {
             followupWait = nil
-            holdAnswerForReading(now: now)
+            log?("후속 질문 대기 종료 · 마이크와 답변 화면 종료")
+            closeRound(sendExit: true)
             return
         }
         if vadEnabled, phase == .recording, !endpoint.hasSpeech,
@@ -176,10 +184,11 @@ final class StandbyVoiceSession {
     }
     private func holdAnswerForReading(now: TimeInterval) {
         // No type7 exit or VAD timeout: the lens may still be rendering text.
+        let exitDeadline = followupWait?.deadline ?? readingDeadline ?? now + 30
         followupWait = nil
         if continuousASREnabled, !write(.stopAudio) { failRound(); return }
         cloudSessionID = nil; sessionDeadline = nil; lastDuplexAudio = nil
-        deadline = max(now, readingDeadline ?? now + 30)
+        deadline = max(now, exitDeadline)
         setPhase(.reading) // Host cancels cloud capture/background task.
         log?("후속 질문 듣기 종료 · 마이크를 끄고 답변 화면은 읽기 시간 동안 유지합니다")
     }
@@ -197,6 +206,7 @@ final class StandbyVoiceSession {
         if followupWait != nil { log?("有效新句取消旧轮续说退出计时") }
         followupWait = nil
         cloudRoundID = id; transcript = ""; transcriptFinal = false; answerBytes = 0; answerCharacters = 0
+        nextTurnSeen = false
         readingDeadline = nil
         deadline = now + 20
         guard write(.vadStart) else { failRound(); return }
@@ -240,12 +250,12 @@ final class StandbyVoiceSession {
         deadline = nil
         // The coalescer has flushed all deltas before this call. This is SDK
         // submission completion, not a lens render ACK. Never start at first token.
-        followupWait = (id, now + 10)
         // Conservative phone-side estimate; no lens rendering ACK is available.
-        let readingSeconds = min(180.0, max(30.0, Double(answerCharacters) / 5.0))
+        let readingSeconds = min(120.0, max(30.0, Double(answerCharacters) / 5.0))
         readingDeadline = now + readingSeconds
+        followupWait = (id, now + readingSeconds)
         setPhase(.displaying)
-        log?("답변 전송 완료 · 후속 질문 10초 대기 · 읽기 시간=\(Int(readingSeconds))초 · 실제 안경 렌더 완료는 별도 확인")
+        log?("답변 전송 완료 · ASR과 끼어들기 유지 · 다음 대화 요청 대기 · 예비 종료=\(Int(readingSeconds))초")
     }
     func cloudFailed(id: UUID) {
         guard cloudRoundID == id || cloudSessionID == id, active else { return }

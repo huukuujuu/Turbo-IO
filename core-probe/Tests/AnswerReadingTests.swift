@@ -11,45 +11,48 @@ import Foundation
             session.receive(from: "synthetic", type: 1, audioBytes: 0, now: 0)
             let id = session.cloudRoundID!
             session.cloudEndpoint(id: id, now: 1)
-            for _ in 0..<length / 20 {
-                session.cloudText(String(repeating: "가", count: 20), final: false, id: id, now: completion)
+            for offset in stride(from: 0, to: length, by: 20) {
+                session.cloudText(String(repeating: "가", count: min(20, length-offset)), final: false, id: id, now: completion)
             }
             session.cloudComplete(id: id, now: completion)
             return (session, { sent })
         }
-        let (long, commands) = fixture(500)
-        long.receive(from: "synthetic", type: 3, audioBytes: 100, now: 11)
-        long.tick(now: 12)
-        precondition(long.phase == .reading)
-        precondition(commands().filter { $0 == .stopAudio }.count == 1)
-        precondition(!commands().contains(.exit) && !commands().contains(.vadTimeout))
-        long.audioFailed()
-        precondition(long.phase == .reading)
-        long.tick(now: 101)
-        precondition(long.phase == .reading)
-        long.tick(now: 102)
+        func tick(_ session: StandbyVoiceSession, _ time: Double) {
+            session.receive(from: "synthetic", type: 3, audioBytes: 100, now: time)
+            session.tick(now: time)
+        }
+        for length in [40, 64, 100, 360, 370, 382, 800] {
+            let (session, commands) = fixture(length)
+            tick(session, 12)
+            precondition(session.phase == .displaying)
+            precondition(!commands().contains(.stopAudio) && !commands().contains(.exit))
+            let stream = session.cloudSessionID!, next = UUID()
+            session.cloudUtteranceBegan(id: next, session: stream, now: 13)
+            precondition(session.phase == .recording && session.cloudRoundID == next)
+            tick(session, 32); precondition(session.phase == .recording)
+        }
+        let (long, commands) = fixture(380)
+        tick(long, 28)
+        long.receive(from: "synthetic", type: 11, audioBytes: 0, now: 28)
+        long.receive(from: "synthetic", type: 11, audioBytes: 0, now: 35)
+        tick(long, 37); precondition(long.phase == .displaying)
+        tick(long, 38)
         precondition(long.phase == .idle && commands().filter { $0 == .exit }.count == 1)
-
-        let (short, _) = fixture(20)
-        short.tick(now: 12); short.tick(now: 31)
-        precondition(short.phase == .reading)
-        short.tick(now: 32); precondition(short.phase == .idle)
-
-        let (interrupted, _) = fixture(500)
-        interrupted.tick(now: 12)
-        interrupted.receive(from: "synthetic", type: 1, audioBytes: 0, now: 13)
-        precondition(interrupted.phase == .recording)
-
+        let (fallback, _) = fixture(500)
+        tick(fallback, 101); precondition(fallback.phase == .displaying)
+        tick(fallback, 102); precondition(fallback.phase == .idle)
+        let (lostAudio, _) = fixture(500)
+        lostAudio.tick(now: 12); precondition(lostAudio.phase == .reading)
+        lostAudio.receive(from: "synthetic", type: 11, audioBytes: 0, now: 13)
+        precondition(lostAudio.phase == .recording && lostAudio.cloudSessionID != nil)
         let (dismissed, dismissedCommands) = fixture(500)
-        dismissed.tick(now: 12)
+        tick(dismissed, 12)
         dismissed.receive(from: "synthetic", type: 8, audioBytes: 0, now: 13)
         precondition(dismissed.phase == .idle && !dismissedCommands().contains(.exit))
-
         let (capped, _) = fixture(1000, completion: 119)
-        capped.tick(now: 120)
-        precondition(capped.phase == .reading)
-        capped.tick(now: 298); precondition(capped.phase == .reading)
-        capped.tick(now: 299); precondition(capped.phase == .idle)
-        print("Answer reading checks passed: long/short retention, microphone stop, new wake, manual exit, session cap.")
+        tick(capped, 120); precondition(capped.phase == .reading)
+        capped.tick(now: 238); precondition(capped.phase == .reading)
+        capped.tick(now: 239); precondition(capped.phase == .idle)
+        print("Answer turn checks passed: 7 lengths, barge-in after 10s, next-turn timeout, duplicate event, fallback, capture recovery, manual exit, session cap.")
     }
 }
