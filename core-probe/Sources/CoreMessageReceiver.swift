@@ -39,9 +39,9 @@ final class CoreMessageReceiver: RNMessageDelegate {
     func message(_ core: RNCoreConnect, receive: RNMessage) {
         let handle = unsafeBitCast(receive, to:MessageHandle.self)
         let business = handle.businessIndex(), payload = handle.payload() ?? Data()
-        let metadata = [13,15,19,21].contains(business) ? try? BusinessEnvelopeMetadata.inspect(payload) : nil
+        let metadata = [13,15,19,21,23].contains(business) ? try? BusinessEnvelopeMetadata.inspect(payload) : nil
         let alwaysOn = business == 13 && metadata?.messageType.map { (161...168).contains($0) } == true
-        if ([14,15,20,21,22].contains(business) || alwaysOn), onBusinessEnvelope != nil {
+        if ([14,15,19,20,21,22,23].contains(business) || alwaysOn), onBusinessEnvelope != nil {
             if payload.count <= 131_100, businessSlots.wait(timeout: .now()) == .success {
                 let id = handle.deviceID(), slots = businessSlots
                 DispatchQueue.main.async { [weak self] in
@@ -71,8 +71,11 @@ final class CoreMessageReceiver: RNMessageDelegate {
         lock.unlock()
         if count <= 3 || count % 50 == 0 || (business == 13 && ![3,163,164].contains(metadata?.messageType ?? 0)) {
             emit("眼镜→本 App \(key) audioBytes=\(metadata?.dataBytes.map(String.init) ?? "none") count=\(count)")
-            if business == 19 && count <= 3 {
+            if business == 19 && metadata?.messageType != 4 && count <= 20 {
                 emit("자막 메뉴 진단 \(key) 구조=\(LauncherStructure.inspect(payload))")
+            }
+            if business == 23 && (metadata?.dataBytes ?? 0) == 0 && count <= 20 {
+                emit("Live Answers 메뉴 진단 \(key) 구조=\(LauncherStructure.inspect(payload))")
             }
             if business == 13, let type = metadata?.messageType,
                ![3,163,164].contains(type), count <= 3 {

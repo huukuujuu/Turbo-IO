@@ -42,6 +42,7 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
     private let standbyPreferenceKey = "syntheticStandbyTarget.v1"
 
     #if COMPANION_DEVICE
+    private let captionHandshake = CaptionHandshakeProbe()
     private var deviceConnectionTimer: Timer?
     private var deviceConnectionPolicy = BondedConnectionPolicy()
     // Thin host adapter: shared proven engine, no duplicate protocol implementation.
@@ -204,6 +205,20 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
         RNProbeSetLogSink { [weak self] line in self?.log(line) }
         voiceProbe.log = { [weak self] in self?.log($0) }
         #if COMPANION_DEVICE
+        if ProcessInfo.processInfo.arguments.contains("--probe-caption-handshake") {
+            companionStop()
+            captionHandshake.enabled = true
+            captionHandshake.responseCode = ProcessInfo.processInfo.arguments.contains("--caption-start-code-zero") ? 0 : 1
+            captionHandshake.recorderControl = ProcessInfo.processInfo.arguments.contains("--caption-recorder-control")
+            captionHandshake.log = { [weak self] in self?.log($0) }
+            captionHandshake.send = { [weak self] id, business, payload in
+                guard [19,23].contains(business), let service = MessageBusinessIndex(rawValue: business),
+                      let self, self.companionReady, self.companionDeviceID == id, let core = self.core else {
+                    throw DeviceFeatureError.disconnected
+                }
+                try core.sendMessage(MessageFactory.make(payload: payload, deviceID: id, business: service, messageID: UUID().uuidString))
+            }
+        }
         voiceProbe.onSubmittedCommand = { [weak self] in self?.companionCommand?($0) }
         voiceProbe.onArchiveTranscript = { [weak self] id, text, final in self?.companionTranscript?(id,text,final) }
         voiceProbe.cloudTools = { [weak self] in self?.companionTools?() ?? [] }
@@ -402,6 +417,7 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
                 guard let self, self.companionDeviceID == id else { return }
                 DisplayObservation.shared.connection(true,phase:self.companionPhase)
                 DisplayObservation.shared.packet(payload,business:business,inbound:true)
+                if [19,23].contains(business) { self.captionHandshake.receive(device: id, business: business, payload: payload) }
                 self.companionBusiness?(id, business, payload)
             }
             receiver.onBusinessLoss = { [weak self] in DisplayObservation.shared.loss(); self?.companionBusinessLoss?() }

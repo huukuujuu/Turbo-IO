@@ -32,6 +32,7 @@ final class MessageHandle {
 enum MessageBusinessIndex: UInt8, CaseIterable {
     case voiceAssistant = 13, recordingService = 14, launcher = 15
     case aiSubtitle = 19, teleprompter = 20, notification = 21, scheduleTodo = 22
+    case proactiveAi = 23
 }
 
 enum MessageFactoryError: Error { case unverifiedImage }

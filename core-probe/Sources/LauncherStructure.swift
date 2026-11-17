@@ -67,10 +67,16 @@ enum LauncherStructure {
                 if ["voiceWakeup","voice_wakeup","ai_voice_wakeup"].contains(key), let boolean = value[key] as? Bool {
                     controls.append(full+"="+String(boolean))
                 }
-                if ["mode","value"].contains(key), (path == "payload" || path.isEmpty), let scalar = value[key] as? NSNumber,
+                if ["mode","value","code","status","reason_code","trigger","direction"].contains(key),
+                   ["", "payload", "settings"].contains(path), let scalar = value[key] as? NSNumber,
                    scalar.doubleValue >= 0 && scalar.doubleValue <= 255 { controls.append(full+"="+scalar.stringValue) }
-                if key == "mode", path == "payload", let mode = value[key] as? String,
-                   mode.range(of:"^[a-z_]{1,20}$",options:.regularExpression) != nil { controls.append(full+"="+mode) }
+                if ["source_language", "target_language"].contains(key), path == "settings",
+                   let language = value[key] as? String,
+                   ["ko", "en", "zh", "ja", "auto", "ko-KR", "en-US", "zh-CN", "Korean", "English", "Chinese"].contains(language) {
+                    controls.append(full+"="+language)
+                }
+                if key == "mode", ["payload", "settings"].contains(path), let mode = value[key] as? String,
+                   mode.range(of:"^[A-Za-z_][A-Za-z_0-9]{0,31}$",options:.regularExpression) != nil { controls.append(full+"="+mode) }
                 if let nested = value[key] as? [String:Any] { walk(nested,full,depth+1) }
                 else if key == "data", path == "payload", let text = value[key] as? String,
                         let data = text.data(using:.utf8), data.count <= 8192,
