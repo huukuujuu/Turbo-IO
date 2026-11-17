@@ -71,7 +71,8 @@ import Combine
     }
     var phaseLabel: String {
         ["disabled": "음성 대기 꺼짐", "waitingForConnection": "연결 인증 대기 중", "idle": "안경에서 음성 호출 대기 중",
-         "recording": "듣는 중", "processing": "응답 생성 중", "displaying": "응답 전송 완료 · 계속 말씀하세요"] [phase] ?? "상태 대기 중"
+         "recording": "듣는 중", "processing": "응답 생성 중", "displaying": "응답 전송 완료 · 계속 말씀하세요",
+         "reading": "답변 읽는 중 · 마이크 꺼짐 · 새 질문은 다시 호출하세요"] [phase] ?? "상태 대기 중"
     }
     func prepare() {
         #if COMPANION_DEVICE

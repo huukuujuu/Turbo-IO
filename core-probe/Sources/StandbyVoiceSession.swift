@@ -4,7 +4,7 @@ import Foundation
 /// The host owns transport, background execution and the single serial queue.
 final class StandbyVoiceSession {
     enum Command: Equatable { case startAudio, stopAudio, vadStart, vadStop, vadTimeout, text(String), streamText(String, Bool), answer(String, Bool, UUID, String), responseComplete, exit }
-    enum Phase: String { case disabled, waitingForConnection, idle, recording, processing, displaying }
+    enum Phase: String { case disabled, waitingForConnection, idle, recording, processing, displaying, reading }
     var send: ((String, Command) -> Bool)?
     var log: ((String) -> Void)?
     var phaseChanged: ((Phase) -> Void)?
@@ -29,9 +29,11 @@ final class StandbyVoiceSession {
     private var transcript = ""
     private var transcriptFinal = false
     private var answerBytes = 0
+    private var answerCharacters = 0
+    private var readingDeadline: TimeInterval?
     private var round = 0
     var enabled: Bool { target != nil }
-    var active: Bool { phase == .recording || phase == .processing || phase == .displaying }
+    var active: Bool { phase == .recording || phase == .processing || phase == .displaying || phase == .reading }
 
     func enable(target: String, connected: Bool) {
         disable()
@@ -49,6 +51,7 @@ final class StandbyVoiceSession {
         if !ready, phase != .waitingForConnection {
             // No write to an invalid/replaced transport; remote stop not guaranteed.
             deadline = nil
+            readingDeadline = nil
             followupWait = nil
             sessionDeadline = nil; cloudSessionID = nil; cloudRoundID = nil
             setPhase(.waitingForConnection)
@@ -66,6 +69,7 @@ final class StandbyVoiceSession {
             return
         }
         if type == 3 {
+            guard phase != .reading else { return } // Ignore late audio after capture was stopped.
             if continuousASREnabled, active, audioBytes > 0 {
                 lastDuplexAudio = now
                 if phase != .recording {
@@ -89,9 +93,10 @@ final class StandbyVoiceSession {
         }
         // 0x0B is a next-round event, not permission to start from idle.
         guard type == 1 || (type == 11 && phase == .displaying) else { return }
-        guard phase == .idle || phase == .displaying || (cloudEnabled && phase == .processing) else { return }
+        guard phase == .idle || phase == .displaying || phase == .reading || (cloudEnabled && phase == .processing) else { return }
         deadline = nil // Supersede the old display exit; never closes a newer round.
         followupWait = nil
+        readingDeadline = nil
         endpoint = SpeechEndpointDetector()
         noSpeechDeadline = vadEnabled && !continuousASREnabled ? now + 5 : nil
         packets = 0; bytes = 0; round += 1; response = makeText()
@@ -101,6 +106,7 @@ final class StandbyVoiceSession {
         lastDuplexAudio = now; duplexPackets = 0
         transcript = ""; transcriptFinal = false
         answerBytes = 0
+        answerCharacters = 0
         guard write(.startAudio) else { failRound(); return }
         deadline = now + (cloudEnabled ? 20 : 8)
         setPhase(.recording)
@@ -121,25 +127,26 @@ final class StandbyVoiceSession {
     }
     func audioDiscontinuity() { endpoint.discontinuity() }
     func audioFailed() {
+        guard phase != .reading else { return }
         guard vadEnabled, (phase == .recording || (continuousASREnabled && active)) else { return }
         log?("VAD解码/分类失败，本轮停止且不生成回答；不是静音判定")
         closeRound(sendExit:true)
     }
     func tick(now: TimeInterval) {
-        if continuousASREnabled, active {
+        if continuousASREnabled, active, phase != .reading {
             if let sessionDeadline, now >= sessionDeadline {
+                if phase == .displaying, followupWait != nil { holdAnswerForReading(now: now); return }
                 log?("持续ASR实验达到120秒上限，停止收音并退出"); closeRound(sendExit:true); return
             }
             if let lastDuplexAudio, now-lastDuplexAudio > 5 {
+                if phase == .displaying, followupWait != nil { holdAnswerForReading(now: now); return }
                 log?("持续ASR超过5秒没有音频回调，取消；缺流不当成静音句末"); closeRound(sendExit:true); return
             }
         }
         if phase == .displaying, let wait = followupWait,
            wait.round == cloudRoundID, now >= wait.deadline {
             followupWait = nil
-            log?("回答完成后10秒无有效续说→停止音频/退出；服务保留待命")
-            if continuousASREnabled, !write(.vadTimeout) { failRound(); return }
-            closeRound(sendExit:true)
+            holdAnswerForReading(now: now)
             return
         }
         if vadEnabled, phase == .recording, !endpoint.hasSpeech,
@@ -161,11 +168,20 @@ final class StandbyVoiceSession {
         } else if phase == .processing {
             log?("云对话处理超过30秒，取消并退出")
             closeRound(sendExit:true)
-        } else if phase == .displaying {
+        } else if phase == .displaying || phase == .reading {
             guard write(.exit) else { failRound(); return }
             setPhase(.idle)
             log?("持续会话type7退出已提交，服务仍开启，等待下次唤醒")
         }
+    }
+    private func holdAnswerForReading(now: TimeInterval) {
+        // No type7 exit or VAD timeout: the lens may still be rendering text.
+        followupWait = nil
+        if continuousASREnabled, !write(.stopAudio) { failRound(); return }
+        cloudSessionID = nil; sessionDeadline = nil; lastDuplexAudio = nil
+        deadline = max(now, readingDeadline ?? now + 30)
+        setPhase(.reading) // Host cancels cloud capture/background task.
+        log?("후속 질문 듣기 종료 · 마이크를 끄고 답변 화면은 읽기 시간 동안 유지합니다")
     }
     func cloudEndpoint(id: UUID, now: TimeInterval) {
         guard cloudEnabled, cloudRoundID == id, phase == .recording else { return }
@@ -180,7 +196,8 @@ final class StandbyVoiceSession {
         let interrupting = phase == .processing || phase == .displaying
         if followupWait != nil { log?("有效新句取消旧轮续说退出计时") }
         followupWait = nil
-        cloudRoundID = id; transcript = ""; transcriptFinal = false; answerBytes = 0
+        cloudRoundID = id; transcript = ""; transcriptFinal = false; answerBytes = 0; answerCharacters = 0
+        readingDeadline = nil
         deadline = now + 20
         guard write(.vadStart) else { failRound(); return }
         setPhase(.recording)
@@ -210,6 +227,7 @@ final class StandbyVoiceSession {
         if !text.isEmpty {
             guard write(.answer(text, false, id, transcript)) else { failRound(); return }
             answerBytes += text.utf8.count
+            answerCharacters += text.count
             // Processing timeout measures a stalled stream, not total answer length.
             deadline = now + 30
             log?("增量回答type32提交 chunkBytes=\(text.utf8.count) totalBytes=\(answerBytes) wireFinal=false cloudEOF=\(final)；正文不入日志")
@@ -223,8 +241,11 @@ final class StandbyVoiceSession {
         // The coalescer has flushed all deltas before this call. This is SDK
         // submission completion, not a lens render ACK. Never start at first token.
         followupWait = (id, now + 10)
+        // Conservative phone-side estimate; no lens rendering ACK is available.
+        let readingSeconds = min(180.0, max(30.0, Double(answerCharacters) / 5.0))
+        readingDeadline = now + readingSeconds
         setPhase(.displaying)
-        log?("workflow回答type12完成已提交；启动10秒静默退出，有效新句取消；非镜片渲染回执")
+        log?("답변 전송 완료 · 후속 질문 10초 대기 · 읽기 시간=\(Int(readingSeconds))초 · 실제 안경 렌더 완료는 별도 확인")
     }
     func cloudFailed(id: UUID) {
         guard cloudRoundID == id || cloudSessionID == id, active else { return }
@@ -250,11 +271,12 @@ final class StandbyVoiceSession {
     private func closeRound(sendExit: Bool) {
         let wasActive = active
         var ok = true
-        if phase == .recording || (continuousASREnabled && wasActive) { ok = write(.stopAudio) }
+        if phase == .recording || (continuousASREnabled && wasActive && phase != .reading) { ok = write(.stopAudio) }
         if wasActive && sendExit { ok = write(.exit) && ok }
         deadline = nil
         cloudRoundID = nil
         followupWait = nil
+        readingDeadline = nil
         cloudSessionID = nil; sessionDeadline = nil; lastDuplexAudio = nil
         answerBytes = 0
         if enabled { setPhase(ok ? .idle : .waitingForConnection) }
@@ -266,6 +288,7 @@ final class StandbyVoiceSession {
         deadline = nil
         cloudRoundID = nil
         followupWait = nil
+        readingDeadline = nil
         cloudSessionID = nil; sessionDeadline = nil; lastDuplexAudio = nil
         answerBytes = 0
         setPhase(.waitingForConnection)

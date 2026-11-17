@@ -32,7 +32,7 @@ struct ConversationView: View {
             if !runtime.enabled {
                 Text("마이크 꺼짐 · 전송 중인 오디오 없음").font(.caption).foregroundStyle(Palette.muted)
             } else {
-                Text(runtime.phase == "idle" || runtime.phase == "waitingForConnection" ? "음성 호출을 기다리는 상태이며 상시 녹음하지 않습니다." : "오디오 처리 중입니다. 음성 대기를 끄면 현재 처리와 자동 응답을 중지합니다.")
+                Text(runtime.phase == "reading" ? "마이크와 ASR 전송을 끄고 답변 화면만 유지합니다. 새 질문은 안경을 다시 호출하세요." : (runtime.phase == "idle" || runtime.phase == "waitingForConnection" ? "음성 호출을 기다리는 상태이며 상시 녹음하지 않습니다." : "오디오 처리 중입니다. 음성 대기를 끄면 현재 처리와 자동 응답을 중지합니다."))
                     .font(.caption).foregroundStyle(Palette.muted)
             }
             NavigationLink("외부 AI 연결 방법과 기능별 차이") { ExternalServicesView() }
@@ -96,7 +96,7 @@ struct ConversationView: View {
                 Text("이 빌드는 안경 통신과 클라우드 서비스를 사용하지 않습니다. 실제 기기는 RayNeoCompanionDevice 빌드를 사용하세요. 데모는 실제 오디오 수집이 아닙니다.")
                     .font(.caption).foregroundStyle(Palette.muted)
             }
-            Text("응답과 완료 메시지 전송 후 10초간 새 문장이 없으면 자동 종료됩니다. 다시 말하면 타이머가 초기화됩니다. 전송 완료와 안경 표시 완료는 다릅니다.")
+            Text("답변 전송 후 10초간 후속 질문을 기다립니다. 이후 마이크를 끄고 답변 길이에 따라 총 30~180초 동안 화면을 유지합니다. 안경에서 직접 닫거나 새로 호출하면 이전 답변을 종료합니다. 전송 완료와 안경 표시 완료는 다릅니다.")
                 .font(.caption).foregroundStyle(Palette.amber)
             Button("현재 화면의 텍스트 지우기") { runtime.clearText() }.font(.caption)
         }
