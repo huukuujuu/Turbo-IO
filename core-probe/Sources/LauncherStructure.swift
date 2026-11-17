@@ -67,7 +67,7 @@ enum LauncherStructure {
                 if ["voiceWakeup","voice_wakeup","ai_voice_wakeup"].contains(key), let boolean = value[key] as? Bool {
                     controls.append(full+"="+String(boolean))
                 }
-                if ["mode","value"].contains(key), path == "payload", let scalar = value[key] as? NSNumber,
+                if ["mode","value"].contains(key), (path == "payload" || path.isEmpty), let scalar = value[key] as? NSNumber,
                    scalar.doubleValue >= 0 && scalar.doubleValue <= 255 { controls.append(full+"="+scalar.stringValue) }
                 if key == "mode", path == "payload", let mode = value[key] as? String,
                    mode.range(of:"^[a-z_]{1,20}$",options:.regularExpression) != nil { controls.append(full+"="+mode) }
