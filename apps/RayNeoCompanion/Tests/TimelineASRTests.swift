@@ -98,7 +98,7 @@ final class TimelineASRTests: XCTestCase {
         let second = TimelineJournal(directory: root)
         let replayed = await withCheckedContinuation { continuation in second.load { continuation.resume(returning: $0) } }
         XCTAssertEqual(try replayed.get().first?.answer, "答复")
-        XCTAssertEqual(try replayed.get().first?.outcome, "模型已完成")
+        XCTAssertEqual(try replayed.get().first?.outcome, "모델 응답 완료")
         let url = root.appendingPathComponent("events.jsonl")
         let handle = try FileHandle(forWritingTo: url); try handle.seekToEnd(); try handle.write(contentsOf: Data("{\"torn".utf8)); try handle.close()
         let before = try Data(contentsOf: url)
@@ -112,7 +112,7 @@ final class TimelineASRTests: XCTestCase {
         let client = ManualRecordingASR(), id = UUID()
         client.start(id: id, title: "synthetic", archive: LocalArchiveController(rootDirectory: nil))
         XCTAssertFalse(client.busy); XCTAssertEqual(client.recordingID, id)
-        XCTAssertTrue(client.status.contains("模拟器")); XCTAssertTrue(client.resultText.isEmpty)
+        XCTAssertTrue(client.status.contains("시뮬레이터")); XCTAssertTrue(client.resultText.isEmpty)
     }
     func testTimelinePreservesFullQuestionAndInterruptedAnswer() throws {
         let first = UUID(), second = UUID()
@@ -127,15 +127,15 @@ final class TimelineASRTests: XCTestCase {
                       ConversationEvent(id: second, kind: .completed),
                       ConversationEvent(id: second, kind: .interrupted)] { TimelineReplay.apply(event, to: &turns) }
         XCTAssertEqual(turns.count, 2); XCTAssertEqual(turns[0].question, full)
-        XCTAssertEqual(turns[0].answer, "前半段"); XCTAssertEqual(turns[0].outcome, "已中断/结束")
-        XCTAssertEqual(turns[1].outcome, "模型已完成")
+        XCTAssertEqual(turns[0].answer, "前半段"); XCTAssertEqual(turns[0].outcome, "중단 / 종료됨")
+        XCTAssertEqual(turns[1].outcome, "모델 응답 완료")
     }
     func testTimelineReplayTornTailAndInvalidMiddleAreDifferent() throws {
         let event = ConversationEvent(id: UUID(), kind: .transcript, text: "保留", final: true)
         var data = try JSONEncoder().encode(event); data.append(10)
         data.append(Data("{\"partial".utf8))
         let turns = try TimelineReplay.decode(data)
-        XCTAssertEqual(turns.count, 1); XCTAssertEqual(turns.first?.outcome, "上次未完成")
+        XCTAssertEqual(turns.count, 1); XCTAssertEqual(turns.first?.outcome, "이전 대화 미완료")
         data.append(10)
         XCTAssertThrowsError(try TimelineReplay.decode(data))
     }

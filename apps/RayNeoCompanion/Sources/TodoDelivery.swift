@@ -19,19 +19,19 @@ enum TodoDeliveryError: LocalizedError {
     case differentDevice, conflict, missing
     var errorDescription: String? {
         switch self {
-        case .differentDevice: return "列表含已关联其他眼镜的待办，未发送任何条目。暂不支持跨眼镜迁移。"
-        case .conflict: return "请先在待发送与冲突页面确认状态冲突；本次未继续发送。"
-        case .missing: return "待办已移除或版本已变化，请重新检查后发送。"
+        case .differentDevice: return "다른 안경에 연결된 할 일이 있어 전송하지 않았습니다. 안경 간 이전은 지원하지 않습니다."
+        case .conflict: return "전송 대기 및 충돌 화면에서 상태 충돌을 먼저 처리하세요. 전송을 중지했습니다."
+        case .missing: return "할 일이 제거됐거나 버전이 바뀌었습니다. 다시 확인한 뒤 보내세요."
         }
     }
 }
 
 extension LocalTodo {
     var deliveryDescription: String {
-        if delivery?.conflict != nil { return "状态冲突 · 本机修改已保留" }
-        guard wireID != nil else { return completed ? "本机已完成 · 未同步" : "仅保存在手机" }
-        if delivery?.pending == true { return "待发送 · 本机修改已保存" }
-        if delivery?.submittedAt != nil { return "已提交 · 未逐项确认" }
-        return "已关联眼镜 · 以回报为准"
+        if delivery?.conflict != nil { return "상태 충돌 · 로컬 변경 유지됨" }
+        guard wireID != nil else { return completed ? "기기에서 완료됨 · 동기화 전" : "휴대폰에만 저장됨" }
+        if delivery?.pending == true { return "전송 대기 · 로컬 변경 저장됨" }
+        if delivery?.submittedAt != nil { return "전송됨 · 항목별 확인 전" }
+        return "안경과 연결됨 · 안경 응답 기준"
     }
 }

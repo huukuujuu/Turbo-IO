@@ -6,7 +6,7 @@ import Combine
     @Published private(set) var rows: [SystemReminderSnapshot] = []
     @Published private(set) var busy = false
     @Published private(set) var activeList: String?
-    @Published private(set) var status = "尚未读取系统提醒事项"
+    @Published private(set) var status = "시스템 미리 알림 읽기 전"
     @Published private(set) var error: String?
     @Published private(set) var selected: Set<String> = []
     let isFixture: Bool
@@ -30,18 +30,18 @@ import Combine
     }
     func loadLists() async {
         let token = begin(); lists = []; activeList = nil
-        status = "等待授权并读取清单名称…"
+        status = "권한 및 목록 이름 읽기 대기 중…"
         defer { if generation == token { busy = false } }
         do {
             try await reader.requestAccess()
             guard generation == token, !Task.isCancelled else { return }
             lists = try reader.lists()
-            status = lists.isEmpty ? "没有可读取的系统清单" : "请选择一个清单，再读取条目"
+            status = lists.isEmpty ? "읽을 수 있는 시스템 목록이 없습니다" : "목록을 선택한 뒤 항목을 읽으세요"
         } catch { if generation == token { fail(error) } }
     }
     func loadReminders(listID: String) async {
         let token = begin(); activeList = listID
-        status = "正在读取所选清单…"
+        status = "선택한 목록 읽는 중…"
         defer { if generation == token { busy = false } }
         do {
             guard lists.contains(where: { $0.id == listID }) else { throw SystemReminderError.unavailable }
@@ -55,7 +55,7 @@ import Combine
                 if lhs.completed != rhs.completed { return !lhs.completed }
                 return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
             }
-            status = "已读取 \(rows.count) 条快照；勾选后才导入，不持续同步"
+            status = "읽음 \(rows.count)개 항목 · 선택 후 가져오며 지속 동기화하지 않습니다"
         } catch { if generation == token { fail(error) } }
     }
     func toggle(_ id: String) {
@@ -71,7 +71,7 @@ import Combine
             guard reader.canRead else { throw SystemReminderError.denied }
             let report = try store.importSystemReminders(rows, selectedIDs: selected)
             selected = []; error = nil
-            status = "已导入 \(report.imported) 条，跳过已导入 \(report.skipped) 条；仅保存在Turbo IO"
+            status = "가져옴 \(report.imported)개 · 이미 가져온 항목 제외 \(report.skipped)개 · Turbo IO에만 저장"
         } catch { fail(error) }
     }
     func cancel() {
@@ -80,13 +80,13 @@ import Combine
     }
     func discardPreview() {
         cancel(); lists = []; activeList = nil; error = nil
-        status = "已清除读取预览；已导入Turbo IO的本机待办不受影响"
+        status = "미리보기를 지웠습니다. 이미 가져온 할 일은 유지됩니다"
     }
     private func fail(_ failure: Error) {
         rows = []; selected = []
         if case SystemReminderError.denied = failure { lists = []; activeList = nil }
         error = (failure as? SystemReminderError)?.localizedDescription ?? SystemReminderError.failed.localizedDescription
-        status = "未导入或修改系统提醒事项"
+        status = "시스템 미리 알림을 가져오거나 수정하지 않았습니다"
     }
 }
 
@@ -94,9 +94,9 @@ import Combine
 @MainActor private final class FixtureReminderReader: SystemReminderReading {
     var canRead = true
     func requestAccess() async throws {}
-    func lists() throws -> [SystemReminderList] { [SystemReminderList(id: "synthetic-list", title: "合成清单 · 不读取系统数据")] }
+    func lists() throws -> [SystemReminderList] { [SystemReminderList(id: "synthetic-list", title: "테스트 목록 · 시스템 데이터 읽기 없음")] }
     func reminders(in listID: String) async throws -> [SystemReminderSnapshot] {
-        [SystemReminderSnapshot(id: "synthetic-reminder", title: "合成系统待办 · 导入测试", completed: false,
+        [SystemReminderSnapshot(id: "synthetic-reminder", title: "시스템 할 일 가져오기 테스트", completed: false,
             dueComponents: DateComponents(calendar: Calendar(identifier: .gregorian), year: 2026, month: 9, day: 9))]
     }
     func cancel() {}

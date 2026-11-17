@@ -25,7 +25,7 @@ struct SystemReminderSnapshot: Identifiable, Equatable {
         formatter.calendar = components.calendar ?? Calendar.current
         formatter.timeZone = components.timeZone ?? formatter.calendar.timeZone
         formatter.dateStyle = .medium; formatter.timeStyle = .none
-        return formatter.string(from: date) + " · 全天"
+        return formatter.string(from: date) + " · 종일"
     }
 }
 
@@ -33,11 +33,11 @@ enum SystemReminderError: LocalizedError {
     case denied, unavailable, failed, limit, selection
     var errorDescription: String? {
         switch self {
-        case .denied: return "未获得提醒事项读取权限。你可在 iPhone 设置中允许访问；Turbo IO不会修改系统待办。"
-        case .unavailable: return "所选清单已不可用，请重新读取清单。"
-        case .failed: return "提醒事项读取失败或超时，请重试；没有导入或修改系统数据。"
-        case .limit: return "一次最多显示 500 条、导入 100 条；请在系统中拆分清单或缩小选择。"
-        case .selection: return "所选条目已过期或格式异常，请重新读取后选择。"
+        case .denied: return "미리 알림 읽기 권한이 없습니다. iPhone 설정에서 허용하세요. Turbo IO는 시스템 할 일을 수정하지 않습니다."
+        case .unavailable: return "선택한 목록을 사용할 수 없습니다. 목록을 다시 읽으세요."
+        case .failed: return "미리 알림 읽기 실패 또는 시간 초과 · 다시 시도하세요. 시스템 데이터는 변경하지 않았습니다."
+        case .limit: return "한 번에 최대 500개 표시, 100개 가져오기를 지원합니다. 목록이나 선택 범위를 줄이세요."
+        case .selection: return "선택 항목이 만료됐거나 형식이 잘못됐습니다. 다시 읽고 선택하세요."
         }
     }
 }

@@ -21,6 +21,7 @@ struct RayNeoCompanionApp: App {
                 .environmentObject(store.headControlTest)
                 .environmentObject(store.automaticWeather)
                 .environmentObject(store.qweather)
+                .environment(\.locale, Locale(identifier: "ko_KR"))
                 .tint(Palette.green)
                 .preferredColorScheme(.light)
         }
@@ -47,10 +48,10 @@ struct RootView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !hideTabBar {
             HStack(spacing: 0) {
-                tabButton(0, "设备", "eyeglasses")
-                tabButton(1, "会话", "bubble.left")
-                tabButton(2, "归档", "folder")
-                tabButton(3, "工具", "case")
+                tabButton(0, "기기", "eyeglasses")
+                tabButton(1, "대화", "bubble.left")
+                tabButton(2, "보관함", "folder")
+                tabButton(3, "도구", "case")
             }
             .padding(.horizontal, 16).padding(.top, 9).padding(.bottom, 2)
             .background(.white)
@@ -68,21 +69,24 @@ struct RootView: View {
             guard url.isFileURL, ["txt", "epub"].contains(url.pathExtension.lowercased()) else { return }
             incomingBook = url; confirmBook = true
         }
-        .confirmationDialog("将这份书籍复制为Turbo IO本地文字？不上传、不修改原文件。", isPresented: $confirmBook) {
-            Button("导入书籍") {
+        .confirmationDialog("이 책의 텍스트를 Turbo IO로 복사할까요? 업로드하거나 원본을 수정하지 않습니다.", isPresented: $confirmBook) {
+            Button("책 가져오기") {
                 guard let url = incomingBook else { return }
                 incomingBook = nil
                 Task { await store.books.importFile(url); showBooks = true }
             }
-            Button("取消", role: .cancel) { incomingBook = nil }
+            Button("취소", role: .cancel) { incomingBook = nil }
         }
         .sheet(isPresented: $showBooks) {
-            NavigationStack { BookShelfView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { showBooks = false } } } }
+            NavigationStack { BookShelfView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("완료") { showBooks = false } } } }
         }
         .onAppear {
             guard !didApplyLaunchArguments else { return }
             didApplyLaunchArguments = true
             let arguments = ProcessInfo.processInfo.arguments
+            #if DEBUG && COMPANION_DEVICE
+            if arguments.contains("--diagnose-cloud-model") { store.voice.testModelConnection() }
+            #endif
             if let index = arguments.firstIndex(of: "--ui-tab"), arguments.indices.contains(index + 1) {
                 store.selectedTab = Int(arguments[index + 1]) ?? 0
             }

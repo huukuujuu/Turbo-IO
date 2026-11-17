@@ -30,10 +30,10 @@ enum AudioContainerOutcome: Equatable, Sendable {
     case limited(String)
     var title: String {
         switch self {
-        case .supported: return "声明子集的结构检查通过"
-        case .unsupported: return "当前检查器不支持"
-        case .invalid: return "发现容器结构错误"
-        case .limited: return "超出本次检查预算"
+        case .supported: return "지원 범위의 구조 검사 통과"
+        case .unsupported: return "현재 검사기에서 지원하지 않음"
+        case .invalid: return "컨테이너 구조 오류 발견"
+        case .limited: return "검사 리소스 한도 초과"
         }
     }
 }
@@ -55,10 +55,10 @@ enum AudioContainerHostError: Error, LocalizedError, Sendable, Equatable {
     case tooLarge, fileChanged, unreadable, sourceMismatch
     var errorDescription: String? {
         switch self {
-        case .tooLarge: return "本次检查最多读取 64 MiB；没有自动提高预算，也不因此判断文件损坏。"
-        case .fileChanged: return "归档文件在检查期间发生变化，旧结果已失效；请先重新校验归档。"
-        case .unreadable: return "无法读取稳定的本机普通文件，未给出结构结论。"
-        case .sourceMismatch: return "文件与当前归档 ID、SHA-256 或长度不一致，未继续检查。"
+        case .tooLarge: return "검사는 최대 64 MiB까지 읽습니다. 한도를 자동으로 늘리지 않으며 파일 손상으로 판단하지 않습니다."
+        case .fileChanged: return "검사 중 파일이 변경되어 이전 결과가 무효입니다. 보관 파일을 다시 검증하세요."
+        case .unreadable: return "안정적인 로컬 일반 파일을 읽을 수 없어 검사 결과를 제공하지 않습니다."
+        case .sourceMismatch: return "파일이 현재 보관 ID, SHA-256 또는 길이와 일치하지 않아 검사를 중지했습니다."
         }
     }
 }
@@ -113,7 +113,7 @@ enum AudioContainerFileInspector {
                 throw AudioContainerHostError.fileChanged
             }
             if total == 0, chunk.count >= 4, !chunk.prefix(4).elementsEqual("OggS".utf8) {
-                outcome = .unsupported("未识别为 Ogg 容器；这不表示其他音频格式已经损坏。")
+                outcome = .unsupported("Ogg 컨테이너로 인식되지 않았습니다. 다른 형식의 파일이 손상됐다는 뜻은 아닙니다.")
             }
             total += Int64(chunk.count)
             hash.update(data: chunk)
@@ -158,10 +158,10 @@ enum AudioContainerFileInspector {
 
     private static func mapped(_ error: OggInspectionError) -> AudioContainerOutcome {
         switch error {
-        case .unsupported(let reason): return .unsupported("声明子集未覆盖：\(reason.rawValue)。没有判定其余结构有效或文件损坏。")
-        case .invalid(let reason): return .invalid("已检查结构违反约束：\(reason.rawValue)。原文件保留，未修复、未解码。")
-        case .limitExceeded(let limit): return .limited("达到资源上限：\(limit.rawValue)。没有无限提高限额，也不当作文件损坏。")
-        case .invalidConfiguration, .inspectorAlreadyFinished, .inspectorFailed: return .limited("检查器生命周期或配置异常，未给出通过结论。")
+        case .unsupported(let reason): return .unsupported("검사 범위 밖: \(reason.rawValue). 나머지 구조의 유효성이나 파일 손상을 판정하지 않았습니다.")
+        case .invalid(let reason): return .invalid("구조 규칙 위반: \(reason.rawValue). 원본은 유지하며 복구나 디코딩은 하지 않았습니다.")
+        case .limitExceeded(let limit): return .limited("리소스 제한 도달: \(limit.rawValue). 한도를 자동으로 늘리거나 파일 손상으로 판단하지 않습니다.")
+        case .invalidConfiguration, .inspectorAlreadyFinished, .inspectorFailed: return .limited("검사기 실행 상태 또는 설정 오류로 통과 여부를 판정하지 않았습니다.")
         }
     }
 }
@@ -240,7 +240,7 @@ final class AudioContainerInspectionController: ObservableObject {
         return true
     }
 
-    func cancel() { invalidate(to: .cancelled, message: "已请求取消；旧任务与文件监视器退出前不能开始新的检查。") }
+    func cancel() { invalidate(to: .cancelled, message: "취소 요청됨 · 이전 작업과 파일 감시가 종료되면 다시 검사할 수 있습니다.") }
     func clear() { invalidate(to: .idle, message: nil) }
     func leave(recordingID: UUID) {
         guard identity?.recordingID == recordingID else { return }
@@ -250,7 +250,7 @@ final class AudioContainerInspectionController: ObservableObject {
         guard let identity else { return }
         guard let current = recordings.first(where: { $0.id == identity.recordingID }), AudioInspectionIdentity(current) == identity,
               issues[identity.recordingID] == nil else {
-            invalidate(to: .stale, message: "归档记录或校验状态变化；此前容器检查结果已失效。")
+            invalidate(to: .stale, message: "보관 기록 또는 검증 상태가 바뀌어 이전 컨테이너 검사 결과가 무효입니다.")
             return
         }
     }
@@ -263,7 +263,7 @@ final class AudioContainerInspectionController: ObservableObject {
                     if let self, let identity = self.identity {
                         self.onIntegrityFailure?(identity, AudioContainerHostError.fileChanged)
                     }
-                    self?.invalidate(to: .stale, message: "检测到本机归档文件变化，旧结构结果已失效。请重新校验归档。")
+                    self?.invalidate(to: .stale, message: "파일 변경이 감지되어 이전 구조 검사 결과가 무효입니다. 보관 파일을 다시 검증하세요.")
                 }
             }, closed: { [weak self] in
                 Task { @MainActor [weak self] in self?.monitorDidClose(generation) }
@@ -289,7 +289,7 @@ final class AudioContainerInspectionController: ObservableObject {
                 if error is CancellationError { phase = .cancelled }
                 else if let error = error as? AudioContainerHostError, case .tooLarge = error { phase = .limited }
                 else { phase = .failed }
-                message = error?.localizedDescription ?? "检查未完成，没有通过结论。"
+                message = error?.localizedDescription ?? "검사를 완료하지 못했습니다. 통과 판정이 없습니다."
                 monitor?.cancel()
             }
         } else { monitor?.cancel() }

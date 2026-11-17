@@ -6,15 +6,15 @@ enum WeatherstackError: LocalizedError, Equatable {
     case key, city, invalid, unit, remote(Int?), network, oversized, stale, icon
     var errorDescription: String? {
         switch self {
-        case .key: return "请先保存 Weatherstack 专用 Key；不会复用语音或模型密钥。"
-        case .city: return "请输入城市及国家（最多 160 字节），不支持批量或自动 IP 定位。"
-        case .invalid: return "天气响应缺少有效字段，未生成可发送的天气。"
-        case .unit: return "天气响应不是摄氏单位 m，已拒绝发送，避免温标混淆。"
-        case .remote(let code): return "Weatherstack 未返回成功数据" + (code.map { "（代码 \($0)）" } ?? "") + "。请检查 Key、城市与套餐额度；不自动重试或降级 HTTP。"
-        case .network: return "天气请求失败或超时；没有发送到眼镜。请检查网络后手动重试。"
-        case .oversized: return "天气响应超过本机 256 KiB 上限，已停止读取。"
-        case .stale: return "这份天气日期过旧、时间缺失或不是本次实时查询，不能作为当前天气发送。"
-        case .icon: return "请填写已确认的固件原始图标编号；不能直接使用 Weatherstack 的 weather_code。"
+        case .key: return "Weatherstack 전용 API 키를 먼저 저장하세요. 음성이나 모델 키를 재사용하지 않습니다."
+        case .city: return "도시와 국가를 입력하세요 (최대 160바이트). 일괄 조회나 IP 위치 감지는 지원하지 않습니다."
+        case .invalid: return "날씨 응답에 필수 필드가 없어 전송용 데이터를 만들지 않았습니다."
+        case .unit: return "날씨 응답이 섭씨 단위 m이 아니어서 전송을 중지했습니다."
+        case .remote(let code): return "Weatherstack에서 유효한 데이터를 받지 못했습니다" + (code.map { " (코드 \($0))" } ?? "") + ". API 키, 도시, 사용량을 확인하세요. 자동 재시도나 HTTP 전환은 하지 않습니다."
+        case .network: return "날씨 요청 실패 또는 시간 초과 · 안경에 전송하지 않았습니다. 네트워크 확인 후 다시 시도하세요."
+        case .oversized: return "날씨 응답이 256 KiB 한도를 초과하여 읽기를 중지했습니다."
+        case .stale: return "날짜가 오래됐거나 시간이 없거나 실시간 조회가 아니어서 현재 날씨로 보낼 수 없습니다."
+        case .icon: return "확인된 펌웨어 아이콘 번호를 입력하세요. Weatherstack의 weather_code를 그대로 사용할 수 없습니다."
         }
     }
 }
@@ -191,7 +191,7 @@ enum WeatherstackClient {
     typealias Fetch = (String,String) async throws -> WeatherstackSnapshot
     @Published private(set) var snapshot: WeatherstackSnapshot?
     @Published private(set) var busy = false
-    @Published private(set) var message = "手动查询后预览，不自动发送、不后台刷新。"
+    @Published private(set) var message = "수동 조회 후 미리보기 · 자동 전송 및 백그라운드 갱신 없음"
     @Published private(set) var hasKey = false
     private let fetch: Fetch
     private let readKey: () -> String?
@@ -199,28 +199,28 @@ enum WeatherstackClient {
         self.fetch = fetch; self.readKey = readKey; hasKey = readKey() != nil
     }
     func saveKey(_ key: String) {
-        do { try WeatherstackVault.save(key); hasKey = true; message = "天气 Key 已存到本机钥匙串，尚未联网。" }
+        do { try WeatherstackVault.save(key); hasKey = true; message = "날씨 API 키를 키체인에 저장했습니다. 서비스에 아직 연결하지 않았습니다." }
         catch { message = error.localizedDescription }
     }
     func removeKey() {
-        do { try WeatherstackVault.remove(); hasKey = false; snapshot = nil; message = "天气 Key 已从本机钥匙串移除。" }
+        do { try WeatherstackVault.remove(); hasKey = false; snapshot = nil; message = "키체인에서 날씨 API 키를 삭제했습니다." }
         catch { message = error.localizedDescription }
     }
     func previewSample() {
         guard !busy else { return }
         snapshot = try? WeatherstackCodec.decode(WeatherstackCodec.historicalSample,sample:true)
-        message = "2019 年离线示例，未联网；仅预览，禁止作为当前天气发送。"
+        message = "2019년 오프라인 예시입니다. 미리보기 전용이며 현재 날씨로 전송할 수 없습니다."
     }
     func refresh(city: String) async {
         guard !busy else { return }
         guard let key = readKey() else { message = WeatherstackError.key.localizedDescription; return }
-        busy = true; snapshot = nil; message = "正在查询 Weatherstack…"
+        busy = true; snapshot = nil; message = "Weatherstack 조회 중…"
         defer { busy = false }
         do {
             let result = try await fetch(city,key)
-            guard !Task.isCancelled else { message = "查询已取消。"; return }
+            guard !Task.isCancelled else { message = "조회를 취소했습니다."; return }
             snapshot = result
-            message = result.canSend(at:Date()) ? "已获取，尚未发送到眼镜。" : WeatherstackError.stale.localizedDescription
+            message = result.canSend(at:Date()) ? "조회 완료 · 안경 전송 전" : WeatherstackError.stale.localizedDescription
         } catch { message = (error as? WeatherstackError ?? .network).localizedDescription }
     }
 }

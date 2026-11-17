@@ -6,12 +6,12 @@ enum CodexBridgeError: LocalizedError {
     case configuration, missingKey, offline, invalidResponse, rejected(String), unknownDelivery
     var errorDescription: String? {
         switch self {
-        case .configuration: return "请填写无账号、查询参数的 HTTPS 桥接地址；仅模拟器允许 HTTP 回环地址。"
-        case .missingKey: return "请先保存此桥接地址的独立令牌。"
-        case .offline: return "桥接未连接，请检查电脑服务与网络。"
-        case .invalidResponse: return "桥接响应无效或版本不匹配。"
-        case .rejected(let code): return "桥接未接受请求（\(code)）。没有自动重试。"
-        case .unknownDelivery: return "上次提交结果未知。请点核对上次提交，不要重复创建任务。"
+        case .configuration: return "계정이나 쿼리 매개변수가 없는 HTTPS 브리지 주소를 입력하세요. HTTP 루프백은 시뮬레이터에서만 허용합니다."
+        case .missingKey: return "이 브리지 주소의 전용 액세스 토큰을 먼저 저장하세요."
+        case .offline: return "브리지에 연결되지 않았습니다. PC 서비스와 네트워크를 확인하세요."
+        case .invalidResponse: return "브리지 응답이 유효하지 않거나 버전이 맞지 않습니다."
+        case .rejected(let code): return "브리지가 요청을 거부했습니다 (\(code)). 자동 재시도하지 않습니다."
+        case .unknownDelivery: return "이전 요청 결과를 확인할 수 없습니다. 이전 요청 확인을 누르고 중복 작업은 만들지 마세요."
         }
     }
 }
@@ -105,18 +105,18 @@ struct CodexToolDescriptor: Identifiable {
     let requiresText: Bool
     var definition: [String: Any] {
         ["type": "function", "function": ["name": id, "description": description,
-            "parameters": ["type": "object", "properties": requiresText ? ["text": ["type": "string", "description": "用户交给Codex的完整要求，不添加授权"]] : [:],
+            "parameters": ["type": "object", "properties": requiresText ? ["text": ["type": "string", "description": "사용자가 Codex에 요청한 전체 내용. 권한을 임의로 추가하지 않음"]] : [:],
                 "required": requiresText ? ["text"] : [], "additionalProperties": false]]]
     }
     var schemaJSON: String {
         guard let data = try? JSONSerialization.data(withJSONObject: definition, options: [.prettyPrinted, .sortedKeys]),
-              let text = String(data: data, encoding: .utf8) else { return "无法显示工具定义" }
+              let text = String(data: data, encoding: .utf8) else { return "도구 정의를 표시할 수 없음" }
         return text
     }
     static let all: [Self] = [
-        .init(id: "codex_message", title: "发起 / 继续任务", description: "仅当用户明确要求Codex执行或继续编程任务时调用。发送到App选中的任务，未选择才新建；不适用于普通聊天或权限审批。", example: "让 Codex 检查一下这个项目的目录结构", requiresText: true),
-        .init(id: "codex_status", title: "查询进度与结果", description: "用户询问Codex当前任务的进度或结果时调用。", example: "Codex 做完了吗？结果是什么？", requiresText: false),
-        .init(id: "codex_stop", title: "停止当前任务", description: "仅用户明确要求停止Codex当前任务时调用。停止回复朗读不等于停止Codex。", example: "停止 Codex 当前任务", requiresText: false)
+        .init(id: "codex_message", title: "작업 시작 / 계속", description: "사용자가 Codex 작업 시작이나 계속을 명확히 요청한 경우에만 호출합니다. 선택한 작업에 보내며 선택하지 않았을 때만 새로 만듭니다. 일반 대화나 권한 승인에는 사용하지 않습니다.", example: "Codex로 이 프로젝트의 폴더 구조를 확인해 줘", requiresText: true),
+        .init(id: "codex_status", title: "진행 상황 및 결과 조회", description: "사용자가 현재 Codex 작업의 진행 상황이나 결과를 물을 때 호출합니다.", example: "Codex 작업 끝났어? 결과가 뭐야?", requiresText: false),
+        .init(id: "codex_stop", title: "현재 작업 중지", description: "사용자가 현재 Codex 작업 중지를 명확히 요청했을 때만 호출합니다. 응답 읽기를 멈추는 것과 Codex 작업 중지는 다릅니다.", example: "현재 Codex 작업을 중지해 줘", requiresText: false)
     ]
 }
 
@@ -125,7 +125,7 @@ struct CodexToolDescriptor: Identifiable {
     @Published private(set) var endpoint: String
     @Published private(set) var voiceToolsEnabled: Bool
     @Published private(set) var state: CodexBridgeState?
-    @Published private(set) var status = "尚未连接电脑桥接"
+    @Published private(set) var status = "PC 브리지 연결 전"
     @Published private(set) var busy = false
     @Published private(set) var selectedTaskID: String?
     @Published private(set) var hasUnknownDelivery = false
@@ -153,7 +153,7 @@ struct CodexToolDescriptor: Identifiable {
         if normalized != endpoint { selectedTaskID = nil; defaults.removeObject(forKey: prefix + "selected") }
         generation = UUID(); state = nil; endpoint = normalized; voiceToolsEnabled = voiceTools
         defaults.set(endpoint, forKey: prefix + "endpoint"); defaults.set(voiceTools, forKey: prefix + "voiceTools")
-        status = "配置已保存；尚未联网。语音工具\(voiceTools ? "已允许" : "已关闭")"
+        status = "설정 저장됨 · 서비스 연결 전. 음성 도구 \(voiceTools ? "허용됨" : "꺼짐")"
     }
     func select(_ id: String?) {
         guard !busy, !hasUnknownDelivery, id == nil || state?.tasks.contains(where: { $0.id == id }) == true else { return }
@@ -167,10 +167,10 @@ struct CodexToolDescriptor: Identifiable {
             let value = try JSONDecoder().decode(CodexBridgeState.self, from: data)
             guard current == generation else { return }
             guard value.protocolVersion == 1, value.tasks.count <= 16, (value.events?.count ?? 0) <= 128 else { throw CodexBridgeError.invalidResponse }
-            state = value; status = value.online ? "电脑桥接在线 · \(value.readOnly ? "只读测试" : "工作区可写，需审批时逐项确认")" : "Codex 进程离线"
+            state = value; status = value.online ? "PC 브리지 온라인 · \(value.readOnly ? "읽기 전용 테스트" : "작업 공간 쓰기 가능 · 승인 요청마다 확인 필요")" : "Codex 프로세스 오프라인"
         } catch {
             guard current == generation else { return }; state = nil
-            status = (error as? CodexBridgeError)?.localizedDescription ?? "桥接连接失败；未自动提交任务"
+            status = (error as? CodexBridgeError)?.localizedDescription ?? "브리지 연결 실패 · 작업을 자동 전송하지 않았습니다"
         }
     }
     private func mutate(_ path: String, body: [String: Any]) async throws -> String {
@@ -191,15 +191,15 @@ struct CodexToolDescriptor: Identifiable {
                   object["accepted"] as? Bool == true, let id = object["taskId"] as? String else { throw CodexBridgeError.invalidResponse }
             selectedTaskID = id; defaults.set(id, forKey: prefix + "selected")
             defaults.removeObject(forKey: prefix + "pending"); hasUnknownDelivery = false
-            status = "已提交，实际执行结果请看任务状态"; await refresh(); return id
-        } catch { status = "提交结果待核对，不会自动重复发送"; throw error }
+            status = "요청 전송됨 · 실제 결과는 작업 상태에서 확인하세요"; await refresh(); return id
+        } catch { status = "요청 결과 확인 필요 · 자동 중복 전송하지 않습니다"; throw error }
     }
     func retryPending() async {
         guard !busy, let pending = defaults.data(forKey: prefix + "pending"),
               let object = (try? JSONSerialization.jsonObject(with: pending)) as? [String: Any],
               object["endpoint"] as? String == endpoint, let path = object["path"] as? String,
               let body = object["body"] as? [String: Any], let data = try? JSONSerialization.data(withJSONObject: body), let token = key(endpoint) else { return }
-        do { _ = try await deliver(path, data: data, token: token) } catch { status = "仍未确认上次提交；保留原请求编号，未新建重复任务" }
+        do { _ = try await deliver(path, data: data, token: token) } catch { status = "이전 요청 미확인 · 원래 요청 ID를 유지하며 중복 작업을 만들지 않았습니다" }
     }
     func message(_ text: String, requestID: String = UUID().uuidString) async throws -> String {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf8.count <= 8192 else { throw CodexBridgeError.rejected("invalid_text") }
@@ -221,23 +221,23 @@ struct CodexToolDescriptor: Identifiable {
         return CodexToolDescriptor.all.map(\.definition)
     }
     func executeTool(name: String, arguments: String, requestID: UUID) async -> String {
-        guard voiceToolsEnabled, configured, !Task.isCancelled else { return "Codex 工具未开启。" }
+        guard voiceToolsEnabled, configured, !Task.isCancelled else { return "Codex 도구가 꺼져 있습니다." }
         do {
             guard arguments.utf8.count <= 9000, let obj = try JSONSerialization.jsonObject(with: Data(arguments.utf8)) as? [String: Any] else { throw CodexBridgeError.invalidResponse }
             switch name {
             case "codex_message":
                 guard obj.count == 1, let text = obj["text"] as? String else { throw CodexBridgeError.invalidResponse }
                 let id = try await message(text, requestID: requestID.uuidString)
-                return "已交给Codex，任务编号\(id.prefix(4))。任务会继续运行，你可以稍后问进度；需要审批请在手机确认。"
+                return "Codex에 요청했습니다. 작업 ID \(id.prefix(4)). 작업은 계속 실행되며 나중에 진행 상황을 물을 수 있습니다. 승인은 휴대폰에서 확인하세요."
             case "codex_status":
                 guard obj.isEmpty else { throw CodexBridgeError.invalidResponse }; await refresh()
-                guard state?.online == true, let task = selected else { return "尚未取得当前Codex任务状态，请在Turbo IOCodex页连接并选择任务。" }
-                return "Codex：\(task.status)。\(String(task.answer.suffix(350)))" + (task.pending.isEmpty ? "" : "请在手机查看具体提问或审批。")
+                guard state?.online == true, let task = selected else { return "현재 작업 상태가 없습니다. Turbo IO의 Codex 화면에서 연결하고 작업을 선택하세요." }
+                return "Codex：\(task.status)。\(String(task.answer.suffix(350)))" + (task.pending.isEmpty ? "" : "자세한 질문이나 승인 요청은 휴대폰에서 확인하세요.")
             case "codex_stop":
                 guard obj.isEmpty else { throw CodexBridgeError.invalidResponse }; try await stop(requestID: requestID.uuidString)
-                return "已请求Codex停止当前任务，最终状态请在任务页核对。"
-            default: return "不支持此工具，未执行任何操作。"
+                return "Codex 작업 중지를 요청했습니다. 최종 상태는 작업 화면에서 확인하세요."
+            default: return "지원하지 않는 도구입니다. 아무 작업도 실행하지 않았습니다."
             }
-        } catch { return "Codex请求未确认成功，请在手机核对。没有自动重试或批准。" }
+        } catch { return "Codex 요청 성공 여부를 확인할 수 없습니다. 휴대폰에서 확인하세요. 자동 재시도나 승인하지 않습니다." }
     }
 }

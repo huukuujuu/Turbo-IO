@@ -15,8 +15,8 @@ import XCTest
             return try DeviceBusinessWire.encode(type:24,json:["cmd":"glass_preview","payload":["data":String(decoding:raw,as:UTF8.self)]])
         }
         o.packet(try packet(1),business:15,inbound:false); XCTAssertTrue(o.page.isEmpty)
-        o.packet(try packet(1),business:15,inbound:true); XCTAssertEqual(o.page["app"] as? String,"待办")
-        o.packet(try packet(2),business:15,inbound:true); XCTAssertEqual(o.page["name"] as? String,"应用已退出；等待下一页面")
+        o.packet(try packet(1),business:15,inbound:true); XCTAssertEqual(o.page["app"] as? String,"할 일")
+        o.packet(try packet(2),business:15,inbound:true); XCTAssertEqual(o.page["name"] as? String,"앱 종료됨 · 다음 화면 대기 중")
         o.connection(false,phase:"waitingForConnection"); XCTAssertTrue(o.page.isEmpty)
         o.packet(try packet(1),business:15,inbound:true); XCTAssertTrue(o.page.isEmpty)
     }
@@ -39,7 +39,7 @@ import XCTest
         o.packet(try DeviceBusinessWire.encode(type:24,json:["cmd":"glass_preview","payload":["data":raw]]),business:15,inbound:true)
         let json = String(decoding:try JSONSerialization.data(withJSONObject:o.snapshot()),as:UTF8.self)
         XCTAssertFalse(json.contains("private-name")); XCTAssertFalse(json.contains("secret"))
-        XCTAssertEqual(o.page["app"] as? String,"未知应用")
+        XCTAssertEqual(o.page["app"] as? String,"알 수 없는 앱")
     }
     func testAnswerRoundsAndQueueLoss() throws {
         let o = DisplayObservation(); o.enabled = true; o.connection(true,phase:"idle"); o.includesText = true

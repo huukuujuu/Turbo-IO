@@ -4,11 +4,11 @@ enum RecordingImportError: LocalizedError {
     case alreadyImporting, notRegularFile, emptyFile, tooLarge, sourceChanged
     var errorDescription: String? {
         switch self {
-        case .alreadyImporting: return "已有一个音频正在导入，请稍候。"
-        case .notRegularFile: return "只能导入普通音频文件，不支持目录或符号链接。"
-        case .emptyFile: return "所选文件为空。"
-        case .tooLarge: return "单个文件最多支持 512 MB，请先拆分较大的录音。"
-        case .sourceChanged: return "导入期间来源文件发生变化，已取消本次导入。"
+        case .alreadyImporting: return "다른 오디오를 가져오는 중입니다. 잠시 기다리세요."
+        case .notRegularFile: return "일반 오디오 파일만 가져올 수 있습니다. 폴더나 심볼릭 링크는 지원하지 않습니다."
+        case .emptyFile: return "선택한 파일이 비어 있습니다."
+        case .tooLarge: return "파일 하나는 최대 512 MB까지 지원합니다. 큰 녹음은 나누세요."
+        case .sourceChanged: return "가져오는 중 원본 파일이 변경되어 취소했습니다."
         }
     }
 }

@@ -10,7 +10,7 @@ import Combine
         var icons: [String: Int] = [:]
     }
     @Published private(set) var configuration: Configuration
-    @Published private(set) var status = "北京天气：等待认证连接；需配置天气 Key 与已验证图标。"
+    @Published private(set) var status = "날씨: 연결 인증 대기 중 · 날씨 API 키 및 아이콘 설정 필요"
     @Published private(set) var snapshot: WeatherstackSnapshot?
     @Published private(set) var busy = false
     private let defaults: UserDefaults
@@ -66,24 +66,24 @@ import Combine
     func tick() {
         let current = device()
         if current != connectedDevice { invalidate(); connectedDevice = current; pending = current != nil }
-        guard configuration.enabled else { status = "连接自动同步已关闭。"; return }
-        guard let current else { status = "天气等待眼镜认证连接。"; return }
+        guard configuration.enabled else { status = "연결 시 자동 동기화가 꺼져 있습니다."; return }
+        guard let current else { status = "날씨 기능이 안경 연결 인증을 기다립니다."; return }
         guard pending, worker == nil else { return }
-        guard !isBusy() else { status = "天气等待当前语音、录音或提词结束后下发。"; return }
+        guard !isBusy() else { status = "음성 대화, 녹음 또는 프롬프터 종료 후 날씨를 전송합니다."; return }
         guard let key = readKey(), !key.isEmpty else {
             pending = false
-            status = "\(configuration.city)：未下发，缺少 Weatherstack Key 或钥匙串尚未解锁；配置后点重试。"
+            status = "\(configuration.city): 전송 전 · Weatherstack API 키 또는 키체인 잠금 해제를 확인한 뒤 재시도하세요."
             return
         }
         let cached = cachedCity == configuration.city && snapshot?.canSend(at: now()) == true ? snapshot : nil
         // Reconnect storms must not turn into a paid request loop, including failed requests.
         if cached == nil, let lastFetch, now().timeIntervalSince(lastFetch) < 60 {
-            status = "天气查询间隔保护：等待满 60 秒后重试，不重复消耗查询额度。"; return
+            status = "조회 간격 제한: 60초 후 다시 시도하세요. 중복 사용량을 방지합니다."; return
         }
         let token = generation, city = configuration.city
         busy = true; pending = false
         if cached == nil { lastFetch = now() }
-        status = cached == nil ? "正在获取 \(city) 实时天气…" : "正在重发本次会话的新鲜天气…"
+        status = cached == nil ? "\(city) 실시간 날씨 조회 중…" : "이번 세션의 최근 날씨를 다시 전송하는 중…"
         worker = Task { [weak self] in
             guard let self else { return }
             defer { if self.generation == token { self.worker = nil; self.busy = false } }
@@ -95,15 +95,15 @@ import Combine
                 guard result.canSend(at: self.now()) else { throw WeatherstackError.stale }
                 self.snapshot = result; self.cachedCity = city
                 guard let icon = self.configuration.icons[String(result.providerCode)] else {
-                    self.status = "\(result.city) \(result.lensTemperature)°C 已获取，未下发：天气码 \(result.providerCode) 的固件图标尚未核对。"
+                    self.status = "\(result.city) \(result.lensTemperature)°C 조회됨 · 전송 전. 날씨 코드 \(result.providerCode)의 펌웨어 아이콘 확인이 필요합니다."
                     return
                 }
-                guard !self.isBusy() else { self.pending = true; self.status = "天气已获取，等待眼镜空闲后下发。"; return }
+                guard !self.isBusy() else { self.pending = true; self.status = "날씨를 조회했습니다. 안경이 사용 중이 아닐 때 전송합니다."; return }
                 try self.send(result, icon)
-                self.status = "\(result.city) \(result.lensTemperature)°C 已提交到首页天气；回执见设备状态，镜片仍需确认。"
+                self.status = "\(result.city) \(result.lensTemperature)°C 홈 날씨로 전송됨 · 기기 응답과 실제 안경 표시를 확인하세요."
             } catch {
                 guard self.generation == token, !Task.isCancelled else { return }
-                self.status = (error as? WeatherstackError)?.localizedDescription ?? "天气下发失败；未确认眼镜收到，可手动重试。"
+                self.status = (error as? WeatherstackError)?.localizedDescription ?? "날씨 전송에 실패했습니다. 안경 수신 미확인 · 수동 재시도 가능"
             }
         }
     }

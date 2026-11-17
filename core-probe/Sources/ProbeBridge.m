@@ -31,6 +31,23 @@
             if ([message.message containsString:category]) line = [line stringByAppendingFormat:@" category=%@", category];
         }
     }
+    if ([function containsString:@"didFailToConnect"] || [function containsString:@"didDisconnectPeripheral"]) {
+        // Connection diagnostics only: retain a public error domain/code or a
+        // fixed category. Never forward the SDK message or its userInfo.
+        NSRegularExpression *codePattern = [NSRegularExpression regularExpressionWithPattern:
+            @"\\b(CBErrorDomain|CBATTErrorDomain|NSPOSIXErrorDomain)\\s+Code=(-?[0-9]{1,5})\\b"
+            options:0 error:nil];
+        NSString *body = message.message ?: @"";
+        NSTextCheckingResult *match = [codePattern firstMatchInString:body options:0 range:NSMakeRange(0, body.length)];
+        if (match) line = [line stringByAppendingFormat:@" domain=%@ code=%@",
+            [body substringWithRange:[match rangeAtIndex:1]], [body substringWithRange:[match rangeAtIndex:2]]];
+        for (NSString *category in @[@"Peer removed pairing information", @"Connection Timeout", @"Connection Failed",
+                @"Encryption is insufficient", @"operation was cancelled", @"Operation was cancelled",
+                @"Device is not connected", @"connection has timed out", @"Pairing information"]) {
+            if ([body rangeOfString:category options:NSCaseInsensitiveSearch].location != NSNotFound)
+                line = [line stringByAppendingFormat:@" category=%@", category];
+        }
+    }
     if ([self.seen containsObject:line]) return;
     [self.seen addObject:line];
     void (^sink)(NSString *) = self.sink;

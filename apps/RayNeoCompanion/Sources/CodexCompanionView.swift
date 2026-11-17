@@ -16,92 +16,92 @@ struct CodexCompanionView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Card {
-                    Label("你的电脑，眼镜里的 Codex", systemImage: "terminal").font(.headline)
-                    Text("发任务、查进度、继续对话；电脑独立执行，眼镜语音不必一直等待。审批仅在本页明确确认，不接受模型代批。")
+                    Label("내 PC의 Codex를 안경에서", systemImage: "terminal").font(.headline)
+                    Text("작업을 보내고 진행 상황을 확인하세요. PC가 독립적으로 실행하므로 음성 연결을 유지할 필요가 없습니다. 승인은 이 화면에서 직접 확인해야 합니다.")
                         .font(.caption).foregroundStyle(Palette.muted)
                     Text(codex.status).font(.caption).accessibilityIdentifier("codex-status")
                     if let state = codex.state {
                         Text(state.workspace).font(.caption2).textSelection(.enabled)
-                        Badge(text: state.readOnly ? "只读测试" : "工作区可写")
+                        Badge(text: state.readOnly ? "읽기 전용 테스트" : "작업 공간 쓰기 허용")
                     }
                 }
                 Card {
-                    Text("电脑桥接").font(.headline)
-                    TextField("HTTPS 地址", text: $endpoint).accessibilityIdentifier("codex-endpoint")
-                    SecureField("独立访问令牌（留空保留）", text: $token).privacySensitive().accessibilityIdentifier("codex-token")
-                    Toggle("允许 DeepSeek 调用 Codex 工具", isOn: $voiceTools).accessibilityIdentifier("codex-voice-tools")
-                    Text("开启后，语音中的任务文字可能发送到此电脑及 Codex。不会上传麦克风原始音频；不接管已有桌面任务。")
+                    Text("PC 브리지").font(.headline)
+                    TextField("HTTPS 주소", text: $endpoint).accessibilityIdentifier("codex-endpoint")
+                    SecureField("전용 액세스 토큰 (비우면 기존 값 유지)", text: $token).privacySensitive().accessibilityIdentifier("codex-token")
+                    Toggle("DeepSeek의 Codex 도구 호출 허용", isOn: $voiceTools).accessibilityIdentifier("codex-voice-tools")
+                    Text("음성으로 지시한 텍스트가 이 PC와 Codex에 전송될 수 있습니다. 마이크 원본 오디오는 업로드하지 않으며 기존 데스크톱 작업은 제어하지 않습니다.")
                         .font(.caption).foregroundStyle(Palette.muted)
-                    Button("保存配置，不启动任务") {
+                    Button("설정 저장 · 작업 시작 안 함") {
                         do { try codex.save(endpoint: endpoint, token: token, voiceTools: voiceTools); token = "" }
                         catch { self.error = error.localizedDescription; token = "" }
                     }.disabled(codex.busy || codex.hasUnknownDelivery).accessibilityIdentifier("codex-save")
-                    Button("连接／刷新状态") { Task { await codex.refresh() } }
+                    Button("연결 / 상태 새로고침") { Task { await codex.refresh() } }
                         .disabled(!codex.configured).accessibilityIdentifier("codex-refresh")
                 }.textInputAutocapitalization(.never).autocorrectionDisabled()
                 Card {
-                    Toggle("Codex 完成和待确认时主动提醒", isOn: Binding(get: { push.enabled }, set: { push.setEnabled($0) }))
+                    Toggle("Codex 완료 및 확인 요청 알림", isOn: Binding(get: { push.enabled }, set: { push.setEnabled($0) }))
                         .accessibilityIdentifier("codex-push-enabled")
                     Text(push.status).font(.caption).accessibilityIdentifier("codex-push-status")
                     Text(notifications.testStatus).font(.caption2).accessibilityIdentifier("codex-push-delivery")
-                    NavigationLink("眼镜通知开关与发送测试") { NotificationCenterView() }
-                    Text("开启后只提醒新事件；完成结果显示摘要，完整内容在本页。语音、录音或提词占用时等待空闲，不抢屏。提醒不是批准。")
+                    NavigationLink("안경 알림 설정 및 전송 테스트") { NotificationCenterView() }
+                    Text("새 이벤트만 알립니다. 안경에는 요약을 표시하고 전체 내용은 이 화면에서 확인합니다. 음성·녹음·프롬프터 사용 중에는 기다립니다. 알림은 승인이 아닙니다.")
                         .font(.caption).foregroundStyle(Palette.muted)
-                    Text("已允许眼镜通知时，连接后会恢复此总开关；不会替换其他 App 来源过滤设置。")
+                    Text("안경 알림이 허용되어 있으면 연결 후 전체 알림 설정을 복원합니다. 다른 앱의 필터는 대체하지 않습니다.")
                         .font(.caption2).foregroundStyle(Palette.muted)
-                    Text("当前是 App 获准运行时约每两秒检查；未接 APNs，系统挂起或强退后不能保证及时提醒。电脑桥接内存最多保留128条、完成事件一小时，重启会清空。")
+                    Text("앱이 실행 가능한 동안 약 2초마다 확인합니다. APNs를 사용하지 않아 앱 중지 후 즉시 알림을 보장하지 않습니다. 브리지는 최대 128개 이벤트를 보관하며 완료 이벤트는 1시간 후 만료되고 재시작 시 지워집니다.")
                         .font(.caption2).foregroundStyle(Palette.muted)
                 }
                 if codex.hasUnknownDelivery {
                     Card {
-                        Label("上次提交结果待核对", systemImage: "exclamationmark.triangle").foregroundStyle(Palette.amber)
-                        Text("保留同一请求编号，不自动创建第二个任务。网络恢复后先核对。待核对内容临时保存在本机，确认后清除。")
+                        Label("이전 요청 결과 확인 필요", systemImage: "exclamationmark.triangle").foregroundStyle(Palette.amber)
+                        Text("동일한 요청 ID를 유지하며 중복 작업을 만들지 않습니다. 네트워크 복구 후 결과를 확인하세요. 확인 대기 내용은 기기에 임시 저장 후 삭제됩니다.")
                             .font(.caption)
-                        Button("核对上次提交") { Task { await codex.retryPending() } }.disabled(codex.busy)
+                        Button("이전 요청 확인") { Task { await codex.retryPending() } }.disabled(codex.busy)
                     }
                 }
                 Card {
                     HStack {
-                        Text("当前任务").font(.headline); Spacer()
-                        Button("改为新任务") { codex.select(nil) }.disabled(codex.busy || codex.hasUnknownDelivery)
+                        Text("현재 작업").font(.headline); Spacer()
+                        Button("새 작업으로 전환") { codex.select(nil) }.disabled(codex.busy || codex.hasUnknownDelivery)
                     }
-                    Text(codex.selectedTaskID.map { "任务 " + String($0.prefix(8)) } ?? "下一条将新建任务").font(.caption)
-                    TextField("交给 Codex 的要求…", text: $prompt, axis: .vertical).lineLimit(2...6).accessibilityIdentifier("codex-prompt")
-                    Button("填入随机校验测试") {
-                        prompt = "这是Turbo IO连接测试。不要读写文件或运行工具，只回复：Turbo IOCodex校验 " + String(UUID().uuidString.prefix(6))
+                    Text(codex.selectedTaskID.map { "작업 " + String($0.prefix(8)) } ?? "다음 메시지는 새 작업을 만듭니다").font(.caption)
+                    TextField("Codex에 요청할 내용…", text: $prompt, axis: .vertical).lineLimit(2...6).accessibilityIdentifier("codex-prompt")
+                    Button("무작위 연결 테스트 입력") {
+                        prompt = "Turbo IO 연결 테스트입니다. 파일이나 도구를 사용하지 말고 다음 문구만 응답하세요: Turbo IO Codex 확인 " + String(UUID().uuidString.prefix(6))
                     }.accessibilityIdentifier("codex-fixture")
                     HStack {
-                        Button("发送到电脑") { Task { do { _ = try await codex.message(prompt); prompt = "" } catch { self.error = error.localizedDescription } } }
+                        Button("PC로 전송") { Task { do { _ = try await codex.message(prompt); prompt = "" } catch { self.error = error.localizedDescription } } }
                             .disabled(!codex.configured || codex.busy || codex.hasUnknownDelivery || prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             .accessibilityIdentifier("codex-send")
                         Spacer()
-                        Button("停止任务", role: .destructive) { Task { do { try await codex.stop() } catch { self.error = error.localizedDescription } } }
+                        Button("작업 중지", role: .destructive) { Task { do { try await codex.stop() } catch { self.error = error.localizedDescription } } }
                             .disabled(codex.selected?.turnId == nil || codex.busy || codex.hasUnknownDelivery)
                     }
                 }
                 if let task = codex.selected {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(task.status).font(.headline)
-                        Text(task.answer.isEmpty ? "还没有收到 Codex 输出" : task.answer).textSelection(.enabled).privacySensitive()
+                        Text(task.answer.isEmpty ? "아직 Codex 응답이 없습니다" : task.answer).textSelection(.enabled).privacySensitive()
                     }.padding(20).frame(maxWidth: .infinity, alignment: .leading).foregroundStyle(Palette.mint)
                         .background(Palette.ink, in: RoundedRectangle(cornerRadius: 20)).accessibilityIdentifier("codex-output")
                     ForEach(task.pending) { request in
                         Card {
-                            Label(request.kind == "question" ? "Codex 需要你的回答" : "Codex 请求单次批准", systemImage: "hand.raised").font(.headline)
+                            Label(request.kind == "question" ? "Codex가 답변을 요청했습니다" : "Codex가 개별 승인을 요청했습니다", systemImage: "hand.raised").font(.headline)
                             Text(request.summary).font(.caption).textSelection(.enabled)
-                            Text("请求 \(request.id.prefix(8)) · 两分钟内有效").font(.caption2)
+                            Text("요청 \(request.id.prefix(8)) · 2분간 유효").font(.caption2)
                             if request.kind == "question" {
                                 ForEach(request.questions) { q in
                                     Text(q.question).font(.subheadline)
                                     ForEach(q.options, id: \.self) { option in Button(option) { answers[q.id] = option } }
-                                    TextField("你的回答", text: Binding(get: { answers[q.id] ?? "" }, set: { answers[q.id] = $0 }))
+                                    TextField("내 답변", text: Binding(get: { answers[q.id] ?? "" }, set: { answers[q.id] = $0 }))
                                 }
-                                Button("提交这些回答") { decide(request, accept: false) }
+                                Button("답변 제출") { decide(request, accept: false) }
                                     .disabled(codex.busy || request.questions.contains(where: { answers[$0.id, default: ""].isEmpty }))
                             } else {
                                 HStack {
-                                    Button("批准这一次") { approval = request }
-                                    Button("拒绝", role: .destructive) { decide(request, accept: false) }
+                                    Button("이번 요청 승인") { approval = request }
+                                    Button("거부", role: .destructive) { decide(request, accept: false) }
                                 }.disabled(codex.busy || codex.hasUnknownDelivery)
                             }
                         }
@@ -109,17 +109,17 @@ struct CodexCompanionView: View {
                 }
                 if let tasks = codex.state?.tasks, !tasks.isEmpty {
                     Card {
-                        Text("桥接管理的任务").font(.headline)
+                        Text("브리지에서 관리하는 작업").font(.headline)
                         ForEach(tasks) { task in
                             Button("\(task.id.prefix(8)) · \(task.status)") { codex.select(task.id) }
                                 .disabled(codex.busy || codex.hasUnknownDelivery)
                         }
                     }
                 }
-                Text("页面前台每两秒刷新。关闭页面不停止电脑任务；本版不承诺 iOS 后台实时通知。语音可问“Codex 进度如何”。")
+                Text("화면이 열려 있으면 2초마다 갱신합니다. 화면을 닫아도 PC 작업은 계속됩니다. iOS 백그라운드 실시간 알림은 보장하지 않습니다. 음성으로 Codex 진행 상황을 물어볼 수 있습니다.")
                     .font(.caption).foregroundStyle(Palette.muted)
             }.padding(22)
-        }.background(Palette.background).navigationTitle("Codex 控制台").navigationBarTitleDisplayMode(.inline)
+        }.background(Palette.background).navigationTitle("Codex 콘솔").navigationBarTitleDisplayMode(.inline)
             .toolbar(.visible, for: .navigationBar).preference(key: CompanionTabBarHiddenPreference.self, value: true)
             .onAppear { endpoint = codex.endpoint; voiceTools = codex.voiceToolsEnabled }
             .task {
@@ -128,11 +128,11 @@ struct CodexCompanionView: View {
                     do { try await Task.sleep(nanoseconds: 2_000_000_000) } catch { break }
                 }
             }
-            .confirmationDialog("仅批准这个请求，不授予整场会话权限。", isPresented: Binding(get: { approval != nil }, set: { if !$0 { approval = nil } })) {
-                Button("确认批准这一次") { if let request = approval { decide(request, accept: true) }; approval = nil }
+            .confirmationDialog("이 요청만 승인하며 전체 세션 권한을 허용하지 않습니다.", isPresented: Binding(get: { approval != nil }, set: { if !$0 { approval = nil } })) {
+                Button("이번 요청 승인 확인") { if let request = approval { decide(request, accept: true) }; approval = nil }
             } message: { Text(approval?.summary ?? "") }
-            .alert("Codex 桥接", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-                Button("知道了", role: .cancel) {}
+            .alert("Codex 브리지", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+                Button("확인", role: .cancel) {}
             } message: { Text(error ?? "") }
     }
     private func decide(_ request: CodexApproval, accept: Bool) {

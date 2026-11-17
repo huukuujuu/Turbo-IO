@@ -104,7 +104,7 @@ final class WeatherstackTests: XCTestCase {
         controller.previewSample(); XCTAssertEqual(controller.snapshot?.isSample,true)
         await controller.refresh(city:"Beijing")
         XCTAssertNil(controller.snapshot); XCTAssertFalse(controller.busy)
-        XCTAssertFalse(controller.message.contains("synthetic-secret")); XCTAssertTrue(controller.message.contains("请求失败"))
+        XCTAssertFalse(controller.message.contains("synthetic-secret")); XCTAssertTrue(controller.message.contains("요청 실패"))
     }
     @MainActor func testHistoricalSnapshotCannotReachLensSender() throws {
         let store = CompanionStore()

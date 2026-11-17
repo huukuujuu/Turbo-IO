@@ -24,12 +24,12 @@ enum BookImportError: LocalizedError {
     case unsupported, limit, invalid, encrypted, encoding, busy
     var errorDescription: String? {
         switch self {
-        case .unsupported: return "目前支持 TXT 和无加密、可重排文字的 EPUB；不支持 PDF 或 DRM 电子书。"
-        case .limit: return "书籍超过安全限额：源文件 20 MiB、正文 8 MiB、最多 2,000 个阅读分段。"
-        case .invalid: return "文件结构、校验或章节引用异常，未导入。原文件保持不变。"
-        case .encrypted: return "此 EPUB 含加密声明，暂不导入；不会尝试解除 DRM。"
-        case .encoding: return "无法识别文字编码，请另存为 UTF-8 TXT 后导入。"
-        case .busy: return "已有书籍正在导入，请稍候。"
+        case .unsupported: return "TXT와 암호화되지 않은 텍스트 EPUB을 지원합니다. PDF와 DRM 전자책은 지원하지 않습니다."
+        case .limit: return "책 용량 제한 초과: 원본 20 MiB, 본문 8 MiB, 읽기 구간 최대 2,000개"
+        case .invalid: return "파일 구조, 검증 또는 장 참조 오류로 가져오지 않았습니다. 원본은 유지됩니다."
+        case .encrypted: return "암호화된 EPUB은 가져오지 않으며 DRM 해제를 시도하지 않습니다."
+        case .encoding: return "문자 인코딩을 인식할 수 없습니다. UTF-8 TXT로 저장한 뒤 가져오세요."
+        case .busy: return "다른 책을 가져오는 중입니다. 잠시 기다리세요."
         }
     }
 }
@@ -133,7 +133,7 @@ enum BookImporter {
             guard total <= maximumTextBytes else { throw BookImportError.limit }
             let page = try BookXML.parse(raw)
             let text = page.body.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !text.isEmpty { parts.append((page.heading.isEmpty ? "章节 \(parts.count + 1)" : page.heading, text)) }
+            if !text.isEmpty { parts.append((page.heading.isEmpty ? "장 \(parts.count + 1)" : page.heading, text)) }
         }
         guard !parts.isEmpty else { throw BookImportError.unsupported }
         return ReadingBook(title: String((package.title.isEmpty ? title : package.title).prefix(200)), chapters: try segments(parts), sourceExtension: ext)

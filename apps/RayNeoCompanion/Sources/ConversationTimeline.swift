@@ -8,7 +8,7 @@ struct ConversationTurn: Codable, Identifiable, Equatable {
     var question = ""
     var answer = ""
     var finalQuestion = false
-    var outcome = "进行中"
+    var outcome = "진행 중"
 }
 
 struct ConversationEvent: Codable {
@@ -32,9 +32,9 @@ enum TimelineReplay {
             guard !turns[index].finalQuestion else { return }
             turns[index].question = event.text; turns[index].finalQuestion = event.final
         case .answerDelta: turns[index].answer += event.text
-        case .completed: turns[index].outcome = "模型已完成"
+        case .completed: turns[index].outcome = "모델 응답 완료"
         case .interrupted:
-            if turns[index].outcome != "模型已完成" { turns[index].outcome = "已中断/结束" }
+            if turns[index].outcome != "모델 응답 완료" { turns[index].outcome = "중단 / 종료됨" }
         }
     }
     static func decode(_ data: Data) throws -> [ConversationTurn] {
@@ -46,7 +46,7 @@ enum TimelineReplay {
             do { apply(try JSONDecoder().decode(ConversationEvent.self, from: Data(row)), to: &turns) }
             catch { if index == rows.count - 1 && data.last != 10 { break }; throw error }
         }
-        for index in turns.indices where turns[index].outcome == "进行中" { turns[index].outcome = "上次未完成" }
+        for index in turns.indices where turns[index].outcome == "진행 중" { turns[index].outcome = "이전 대화 미완료" }
         return turns
     }
     static func markdown(_ turns: [ConversationTurn]) -> String {
@@ -56,8 +56,8 @@ enum TimelineReplay {
             let fence = String(repeating: "`", count: max(3, longest + 1))
             return fence + "text\n" + text + "\n" + fence
         }
-        return "# Turbo IO对话时间轴\n\n> 仅包含本 App 的会话；时间为设备记录时间。模型完成不等于镜片显示验收。\n\n" + turns.sorted { $0.startedAt < $1.startedAt }.map {
-            "## \(formatter.string(from: $0.startedAt))\n\n状态：\($0.outcome)\n\n### 我\n\n\(literal($0.question))\n\n### AI\n\n\(literal($0.answer))\n"
+        return "# Turbo IO 대화 기록\n\n> 이 앱의 대화만 포함하며 시간은 기기 기록 기준입니다. 모델 응답 완료와 안경 표시 완료는 별개입니다.\n\n" + turns.sorted { $0.startedAt < $1.startedAt }.map {
+            "## \(formatter.string(from: $0.startedAt))\n\n상태: \($0.outcome)\n\n### 나\n\n\(literal($0.question))\n\n### AI\n\n\(literal($0.answer))\n"
         }.joined(separator: "\n")
     }
 }
@@ -123,7 +123,7 @@ final class TimelineJournal {
             case .success(var turns):
                 for event in self.pending { TimelineReplay.apply(event, to: &turns) }
                 self.turns = turns
-            case .failure: self.storageError = "历史记录读取失败，原文件保留；新内容暂留屏幕，请及时导出。"
+            case .failure: self.storageError = "이전 기록 읽기 실패 · 원본은 유지됩니다. 새 내용은 화면에만 있으므로 내보내세요."
             }
             self.loaded = true; self.pending = []
         }
@@ -132,7 +132,7 @@ final class TimelineJournal {
         if !loaded { pending.append(event) }
         TimelineReplay.apply(event, to: &turns)
         journal.append(event) { [weak self] success in
-            if !success { self?.storageError = "对话未能完整写入本机，请导出当前时间轴。可能为存储不足、文件损坏或达到 64 MiB 限额；没有删除旧记录。" }
+            if !success { self?.storageError = "대화를 모두 저장하지 못했습니다. 현재 기록을 내보내세요. 저장 공간, 파일 손상 또는 64 MiB 한도 문제일 수 있으며 이전 기록은 유지됩니다." }
         }
     }
     func export() async throws -> URL {
@@ -140,7 +140,7 @@ final class TimelineJournal {
         let directory = journal.directory.appendingPathComponent("Exports")
         return try await Task.detached {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let url = directory.appendingPathComponent("Turbo IO对话-\(UUID().uuidString).md")
+            let url = directory.appendingPathComponent("TurboIO_대화-\(UUID().uuidString).md")
             try Data(text.utf8).write(to: url, options: [.withoutOverwriting, .completeFileProtectionUntilFirstUserAuthentication])
             return url
         }.value

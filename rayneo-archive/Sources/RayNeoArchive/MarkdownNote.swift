@@ -39,8 +39,8 @@ func markdownNote(recording: ArchivedRecording, revision: Int, title: String, te
     if let recordedAt = recording.recordedAt {
         lines.append("recorded_at: \(try quoted(iso.string(from: recordedAt)))")
     }
-    lines += ["---", "", "# \(plain(title))", "", "[打开本地音频](../\(recording.audioRelativePath))", "",
-              "文字由宿主应用提供；本归档包未执行语音识别、音频解码或上传。", "", "## 转写文本", ""]
+    lines += ["---", "", "# \(plain(title))", "", "[로컬 오디오 열기](../\(recording.audioRelativePath))", "",
+              "텍스트는 앱에서 제공했습니다. 이 보관 패키지는 음성 인식, 오디오 디코딩 또는 업로드를 수행하지 않았습니다.", "", "## 전사 텍스트", ""]
     lines += text.components(separatedBy: "\n").map {
         "> " + plain($0.replacingOccurrences(of: "\t", with: "    "))
     }

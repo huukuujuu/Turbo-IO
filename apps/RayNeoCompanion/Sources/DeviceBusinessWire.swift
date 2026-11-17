@@ -69,14 +69,14 @@ enum DeviceFeatureError: LocalizedError {
     case invalidPacket, disconnected, busy, noSession, incomplete, conflictingBytes, storageLimit, unsupportedFile
     var errorDescription: String? {
         switch self {
-        case .invalidPacket: return "协议字段无效，未发送或应用。"
-        case .disconnected: return "需要唯一已认证的眼镜连接；模拟器不会发包。"
-        case .busy: return "请先结束语音会话或当前眼镜任务。"
-        case .noSession: return "没有匹配的本机任务，未修改其他设备内容。"
-        case .incomplete: return "录音缺少完成消息或存在数据空洞；原始文件已保留，不标完整。"
-        case .conflictingBytes: return "同一录音位置收到不同字节，已停止封装并保留原件。"
-        case .storageLimit: return "超过本机接收限制，已停止新增接收；没有删除眼镜文件。"
-        case .unsupportedFile: return "音频包格式未通过验证；保留原始文件，不生成伪成功音频。"
+        case .invalidPacket: return "프로토콜 필드가 유효하지 않아 전송하거나 적용하지 않았습니다."
+        case .disconnected: return "인증된 안경 한 대가 필요합니다. 시뮬레이터에서는 전송하지 않습니다."
+        case .busy: return "음성 대화 또는 현재 안경 작업을 먼저 종료하세요."
+        case .noSession: return "일치하는 로컬 작업이 없습니다. 다른 기기의 내용은 변경하지 않았습니다."
+        case .incomplete: return "녹음 완료 메시지가 없거나 데이터가 누락됐습니다. 원본은 유지하며 완전한 녹음으로 표시하지 않습니다."
+        case .conflictingBytes: return "같은 녹음 위치에서 서로 다른 데이터를 받아 파일 생성을 중지했습니다. 원본은 유지됩니다."
+        case .storageLimit: return "수신 한도 초과로 새 수신을 중지했습니다. 안경 파일은 삭제하지 않았습니다."
+        case .unsupportedFile: return "오디오 패킷 형식 검증 실패 · 원본을 유지하며 정상 오디오를 생성하지 않습니다."
         }
     }
 }

@@ -5,54 +5,57 @@ struct ToolsView: View {
     @State private var showModel = false
     @State private var showLab = false
     var body: some View {
-        Screen(title: "工具箱", eyebrow: "本地工具与实验") {
+        Screen(title: "도구 모음", eyebrow: "로컬 도구 및 실험 기능") {
+            NavigationLink { ExternalServicesView() } label: {
+                Card { FeatureRow(icon: "questionmark.circle", title: "외부 AI·서비스 연결 안내", subtitle: "음성 인식 · 답변 AI · Codex · 설정 초안의 차이", status: "도움말", active: true) }
+            }.buttonStyle(.plain).accessibilityIdentifier("external-services-guide")
             NavigationLink { DisplayObserverView() } label: {
-                Card { FeatureRow(icon: "eyeglasses", title: "显示观察", subtitle: "USB · 页面回报与发送文字 · 非截图", status: "只读") }
+                Card { FeatureRow(icon: "eyeglasses", title: "디스플레이 관찰", subtitle: "USB · 화면 상태와 전송 텍스트 · 스크린샷 아님", status: "읽기 전용") }
             }.buttonStyle(.plain).accessibilityIdentifier("display-observer-entry")
             NavigationLink { AlwaysOnLocalProbeView(probe: store.alwaysOn) } label: {
-                Card { FeatureRow(icon: "waveform.path", title: "全天智记", subtitle: "仅音频 · 30秒本地协议测试", status: "实验") }
+                Card { FeatureRow(icon: "waveform.path", title: "일상 기록", subtitle: "오디오 전용 · 30초 로컬 프로토콜 테스트", status: "실험 기능") }
             }.buttonStyle(.plain).accessibilityIdentifier("always-on-entry")
             NavigationLink { ModelToolsView() } label: {
-                Card { FeatureRow(icon: "wrench.and.screwdriver", title: "AI Tools", subtitle: "模型工具 · 参数 · 可用条件", status: "查看") }
+                Card { FeatureRow(icon: "wrench.and.screwdriver", title: "AI Tools", subtitle: "모델 도구 · 매개변수 · 사용 조건", status: "보기") }
             }.buttonStyle(.plain).accessibilityIdentifier("model-tools-entry")
             NavigationLink { CodexCompanionView() } label: {
-                Card { FeatureRow(icon: "terminal", title: "Codex 控制台", subtitle: "电脑任务 · 进度 · 单次审批", status: "连接电脑") }
+                Card { FeatureRow(icon: "terminal", title: "Codex 콘솔", subtitle: "PC 작업 · 진행 상황 · 개별 승인", status: "PC 연결") }
             }.buttonStyle(.plain).accessibilityIdentifier("codex-tool")
             Card {
                 NavigationLink { TodoView() } label: {
-                    FeatureRow(icon: "checklist", title: "待办清单", subtitle: "记录与管理任务", status: "本地可用", active: true)
+                    FeatureRow(icon: "checklist", title: "할 일 목록", subtitle: "할 일 기록 및 관리", status: "로컬 사용 가능", active: true)
                 }.buttonStyle(.plain).accessibilityIdentifier("todo-tool")
                 Divider().overlay(Palette.line)
                 NavigationLink { PrompterView() } label: {
-                    FeatureRow(icon: "text.alignleft", title: "提词器", subtitle: "台词编辑与手机预览", status: "本地可用", active: true)
+                    FeatureRow(icon: "text.alignleft", title: "프롬프터", subtitle: "원고 편집 및 휴대폰 미리보기", status: "로컬 사용 가능", active: true)
                 }.buttonStyle(.plain).accessibilityIdentifier("prompter-tool")
             }
             Card {
-                Button { showModel = true } label: { FeatureRow(icon: "gearshape", title: "模型设置", subtitle: "配置本地模型与服务", status: "配置") }.buttonStyle(.plain)
+                Button { showModel = true } label: { FeatureRow(icon: "gearshape", title: "다른 모델 설정 초안", subtitle: "저장 전용 · 실제 음성 AI에는 적용되지 않음", status: "초안") }.buttonStyle(.plain)
                 Divider().overlay(Palette.line)
-                Button { showLab = true } label: { FeatureRow(icon: "flask", title: "协议实验室", subtitle: "探索协议与功能实验", status: "本地模拟") }.buttonStyle(.plain).accessibilityIdentifier("protocol-lab")
+                Button { showLab = true } label: { FeatureRow(icon: "flask", title: "프로토콜 실험실", subtitle: "프로토콜 및 기능 실험", status: "로컬 시뮬레이션") }.buttonStyle(.plain).accessibilityIdentifier("protocol-lab")
             }
             VStack(spacing: 12) {
-                SectionLabel(title: "眼镜功能", trailing: "真机接入 · 待复验")
+                SectionLabel(title: "안경 기능", trailing: "실제 기기 연동 · 재확인 필요")
                 Card {
-                    NavigationLink { NotificationCenterView() } label: { FeatureRow(icon: "bell.badge", title: "通知中心", subtitle: "来源开关与自定义发送测试", status: "真机") }.buttonStyle(.plain).accessibilityIdentifier("notification-tool")
+                    NavigationLink { NotificationCenterView() } label: { FeatureRow(icon: "bell.badge", title: "알림 센터", subtitle: "앱별 알림 설정 및 사용자 알림 테스트", status: "실제 기기") }.buttonStyle(.plain).accessibilityIdentifier("notification-tool")
                     Divider().overlay(Palette.line)
-                    NavigationLink { HeadControlNotificationTestView() } label: { FeatureRow(icon: "person.crop.circle.badge.checkmark", title: "头控通知测试", subtitle: "待办建议卡 · 点头/摇头仅回传本机", status: "真机") }.buttonStyle(.plain).accessibilityIdentifier("head-control-test-entry")
+                    NavigationLink { HeadControlNotificationTestView() } label: { FeatureRow(icon: "person.crop.circle.badge.checkmark", title: "머리 동작 알림 테스트", subtitle: "할 일 제안 카드 · 끄덕임/고개 젓기 결과를 앱에서 확인", status: "실제 기기") }.buttonStyle(.plain).accessibilityIdentifier("head-control-test-entry")
                     Divider().overlay(Palette.line)
-                    NavigationLink { GlassesSettingsView() } label: { FeatureRow(icon: "cloud", title: "天气与设备设置", subtitle: "自定义数据、读取状态与设置", status: "真机") }.buttonStyle(.plain).accessibilityIdentifier("device-settings-tool")
+                    NavigationLink { GlassesSettingsView() } label: { FeatureRow(icon: "cloud", title: "날씨 및 기기 설정", subtitle: "사용자 데이터 및 기기 상태 조회·설정", status: "실제 기기") }.buttonStyle(.plain).accessibilityIdentifier("device-settings-tool")
                     Divider().overlay(Palette.line)
-                    NavigationLink { GlassesSettingsView() } label: { FeatureRow(icon: "slider.vertical.3", title: "头控与旋钮", subtitle: "已有协议值域的控制子集", status: "真机") }.buttonStyle(.plain)
+                    NavigationLink { GlassesSettingsView() } label: { FeatureRow(icon: "slider.vertical.3", title: "머리 동작 및 다이얼", subtitle: "확인된 프로토콜 설정만 지원", status: "실제 기기") }.buttonStyle(.plain)
                 }
             }
-            Label("设备效果以实机验收为准", systemImage: "info.circle")
+            Label("기능의 실제 동작은 안경에서 확인하세요", systemImage: "info.circle")
                 .font(.system(size: 12)).foregroundStyle(Palette.green).padding(15)
                 .frame(maxWidth: .infinity, alignment: .leading).background(Palette.mint.opacity(0.18), in: RoundedRectangle(cornerRadius: 15))
             HStack {
-                NavigationLink("使用说明") { HelpView() }
+                NavigationLink("사용 안내") { HelpView() }
                 Spacer()
-                NavigationLink("能力范围") { ProtocolLabView() }
+                NavigationLink("지원 범위") { ProtocolLabView() }
                 Spacer()
-                NavigationLink("偏好设置") { SettingsView(embedded: true) }
+                NavigationLink("설정") { SettingsView(embedded: true) }
             }.font(.system(size: 12)).padding(.horizontal, 5)
         }
         .sheet(isPresented: $showModel) { ModelConfigurationView() }
@@ -85,22 +88,22 @@ struct ModelToolsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Card {
-                    Label("DeepSeek 的工具清单", systemImage: "wrench.and.screwdriver").font(.headline)
-                    Text("当前配置将提供 \(providedNames.count) / \(CodexToolDescriptor.all.count) 个工具")
+                    Label("DeepSeek 도구 목록", systemImage: "wrench.and.screwdriver").font(.headline)
+                    Text("제공할 도구: \(providedNames.count) / \(CodexToolDescriptor.all.count)개")
                         .accessibilityIdentifier("model-tools-count")
-                    Text("这是下次模型请求可携带的 tools，不代表已经发出请求、工具执行成功或电脑在线。页面只读，不会启动任务。")
+                    Text("다음 모델 요청에 포함할 수 있는 도구입니다. 호출이나 실행 성공, PC 연결 상태를 뜻하지 않습니다. 이 화면은 읽기 전용이며 작업을 시작하지 않습니다.")
                         .font(.caption).foregroundStyle(Palette.muted)
-                    Text(codex.configured ? (codex.voiceToolsEnabled ? "工具权限：已允许" : "工具权限：已关闭") : "工具配置：缺少桥接地址或令牌")
+                    Text(codex.configured ? (codex.voiceToolsEnabled ? "도구 권한: 허용됨" : "도구 권한: 꺼짐") : "도구 설정: 브리지 주소 또는 토큰 필요")
                         .font(.caption).accessibilityIdentifier("model-tools-configuration")
-                    Text(runtime.supportsDevice ? "语音：\(runtime.phaseLabel) · \(runtime.cloud ? "云对话" : "云对话未运行")" : "模拟器：仅查看清单，不运行眼镜语音")
+                    Text(runtime.supportsDevice ? "음성: \(runtime.phaseLabel) · \(runtime.cloud ? "클라우드 대화" : "클라우드 대화 꺼짐")" : "시뮬레이터: 목록만 표시하며 안경 음성을 실행하지 않습니다")
                         .font(.caption)
-                    Text("桥接状态（上次检查 / 配置结果）：\(codex.status)").font(.caption)
+                    Text("브리지 상태 (최근 확인 / 설정 결과): \(codex.status)").font(.caption)
                         .accessibilityIdentifier("model-tools-bridge-state")
-                    Button(refreshing ? "正在检查…" : "检查桥接连接（不发任务）") {
+                    Button(refreshing ? "확인 중…" : "브리지 연결 확인 (작업 전송 없음)") {
                         refreshing = true
                         Task { await codex.refresh(); refreshing = false }
                     }.disabled(!codex.configured || refreshing).accessibilityIdentifier("model-tools-refresh")
-                    NavigationLink("管理 Codex 工具开关与连接") { CodexCompanionView() }
+                    NavigationLink("Codex 도구 허용 및 연결 관리") { CodexCompanionView() }
                         .accessibilityIdentifier("model-tools-configure")
                 }
                 ForEach(CodexToolDescriptor.all) { tool in
@@ -108,22 +111,22 @@ struct ModelToolsView: View {
                         Text(tool.title).font(.headline)
                         Text(tool.id).font(.system(.subheadline, design: .monospaced)).textSelection(.enabled)
                             .accessibilityIdentifier("model-tool-name-\(tool.id)")
-                        Badge(text: providedNames.contains(tool.id) ? "将随模型请求提供" : "未提供给模型")
+                        Badge(text: providedNames.contains(tool.id) ? "모델 요청에 포함됨" : "모델에 제공하지 않음")
                         Text(tool.description).font(.subheadline)
-                        Text(tool.requiresText ? "参数：text（必填字符串，任务要求）" : "参数：无，使用当前所选任务")
+                        Text(tool.requiresText ? "매개변수: text (필수 문자열, 작업 요청)" : "매개변수: 없음, 현재 선택한 작업 사용")
                             .font(.caption).foregroundStyle(Palette.muted)
-                        Text("你可以说：“\(tool.example)”").font(.caption).foregroundStyle(Palette.green)
+                        Text("이렇게 말해 보세요: “\(tool.example)”").font(.caption).foregroundStyle(Palette.green)
                         Button {
                             if expandedTools.contains(tool.id) { expandedTools.remove(tool.id) }
                             else { expandedTools.insert(tool.id) }
                         } label: {
                             HStack {
-                                Text(expandedTools.contains(tool.id) ? "收起工具定义（JSON）" : "查看实际工具定义（JSON）")
+                                Text(expandedTools.contains(tool.id) ? "도구 정의 접기 (JSON)" : "실제 도구 정의 보기 (JSON)")
                                 Spacer()
                                 Image(systemName: expandedTools.contains(tool.id) ? "chevron.down" : "chevron.right")
                             }.frame(minHeight: 44)
                         }.accessibilityIdentifier("model-tool-details-\(tool.id)")
-                            .accessibilityValue(expandedTools.contains(tool.id) ? "已展开" : "已收起")
+                            .accessibilityValue(expandedTools.contains(tool.id) ? "펼쳐짐" : "접힘")
                         if expandedTools.contains(tool.id) {
                             Text(tool.schemaJSON).font(.system(.caption, design: .monospaced))
                                 .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
@@ -131,7 +134,7 @@ struct ModelToolsView: View {
                         }
                     }
                 }
-                Text("当前使用 Function Calling，并非 MCP。待办、天气、录音等 App 功能尚未注册为模型工具；权限审批仍须在手机明确确认，没有自动批准工具。")
+                Text("현재 Function Calling을 사용합니다. 할 일, 날씨, 녹음 기능은 아직 모델 도구에 등록되지 않았습니다. 권한 승인은 휴대폰에서 직접 확인해야 하며 자동 승인 도구는 없습니다.")
                     .font(.caption).foregroundStyle(Palette.muted).accessibilityIdentifier("model-tools-boundary")
             }.padding(22)
         }.background(Palette.background).navigationTitle("AI Tools").navigationBarTitleDisplayMode(.inline)
@@ -147,31 +150,31 @@ struct TodoView: View {
     @FocusState private var inputFocused: Bool
     private var visibleTodos: [LocalTodo] { store.todos.filter { $0.archivedAt == nil && $0.completed == showCompleted } }
     private var markdown: String {
-        "# Turbo IO待办清单\n\n> 本机当前快照；不代表眼镜同步或镜片验收状态。\n\n" + store.todos.filter { $0.archivedAt == nil }.map {
+        "# Turbo IO 할 일 목록\n\n> 이 기기의 현재 기록이며 안경 동기화나 표시 확인을 의미하지 않습니다.\n\n" + store.todos.filter { $0.archivedAt == nil }.map {
             "- [\($0.completed ? "x" : " ")] \($0.title.replacingOccurrences(of: "\n", with: " "))"
         }.joined(separator: "\n")
     }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                notice("先保存到本机 · 眼镜同步需确认")
-                NavigationLink("从系统提醒事项导入") { ReminderImportView() }
+                notice("먼저 기기에 저장 · 안경 동기화 시 확인 필요")
+                NavigationLink("시스템 미리 알림에서 가져오기") { ReminderImportView() }
                     .accessibilityIdentifier("system-reminders-open")
-                Picker("待办筛选", selection: $showCompleted) {
-                    Text("进行中").tag(false); Text("已完成").tag(true)
+                Picker("할 일 필터", selection: $showCompleted) {
+                    Text("진행 중").tag(false); Text("완료됨").tag(true)
                 }.pickerStyle(.segmented)
                 HStack(spacing: 12) {
-                    TextField("添加一条待办…", text: $title, axis: .vertical).lineLimit(1...3).accessibilityIdentifier("todo-input").focused($inputFocused)
+                    TextField("할 일 추가…", text: $title, axis: .vertical).lineLimit(1...3).accessibilityIdentifier("todo-input").focused($inputFocused)
                     Button {
                         store.addTodo(title); title = ""
                         inputFocused = false
                         showCompleted = false
                     } label: { Image(systemName: "plus").font(.system(size: 17, weight: .medium)).foregroundStyle(.white).frame(width: 36, height: 36).background(Palette.ink, in: Circle()) }
-                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityLabel("保存到本机")
+                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityLabel("기기에 저장")
                 }.padding(13).background(.white, in: RoundedRectangle(cornerRadius: 14))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(Palette.line, lineWidth: 0.75))
                 if visibleTodos.isEmpty {
-                    Card { EmptyState(icon: "checkmark.circle", title: showCompleted ? "还没有已完成待办" : "还没有进行中的待办", detail: "从一件可以完成的小事开始。\n这里不会显示或修改官方 App 的待办。") }
+                    Card { EmptyState(icon: "checkmark.circle", title: showCompleted ? "완료한 할 일이 없습니다" : "진행 중인 할 일이 없습니다", detail: "작은 할 일부터 시작해 보세요.\n공식 앱의 할 일을 표시하거나 수정하지 않습니다.") }
                 } else {
                     ForEach(visibleTodos) { todo in
                         Button { store.toggleTodo(todo.id) } label: {
@@ -182,17 +185,17 @@ struct TodoView: View {
                                         Text(todo.title).font(.system(size: 15)).strikethrough(todo.completed).foregroundStyle(todo.completed ? Palette.muted : Palette.ink)
                                         Text(todo.deliveryDescription).font(.system(size: 10)).foregroundStyle(Palette.muted)
                                         if let day = SystemReminderSnapshot.dateOnlyLabel(todo.reminderDueComponents) {
-                                            Text("计划：" + day).font(.caption2).foregroundStyle(Palette.muted)
-                                        } else if let due = todo.dueAt { Text("计划：" + due.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(Palette.muted) }
-                                        if todo.reminderSourceID != nil { Text("系统提醒事项导入 · 独立副本，不回写").font(.caption2).foregroundStyle(Palette.muted) }
+                                            Text("예정: " + day).font(.caption2).foregroundStyle(Palette.muted)
+                                        } else if let due = todo.dueAt { Text("예정: " + due.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(Palette.muted) }
+                                        if todo.reminderSourceID != nil { Text("시스템 미리 알림에서 가져온 사본 · 원본 수정 없음").font(.caption2).foregroundStyle(Palette.muted) }
                                     }
                                     Spacer(minLength: 0)
                                 }
                             }
-                        }.buttonStyle(.plain).accessibilityLabel("\(todo.title)，\(todo.completed ? "本机已完成" : "本机未完成")")
+                        }.buttonStyle(.plain).accessibilityLabel("\(todo.title)，\(todo.completed ? "이 기기에서 완료" : "이 기기에서 미완료")")
                             .contextMenu {
-                                Button("编辑内容和计划时间") { editingTodo = todo }
-                                Button("移到已移除", role: .destructive) { store.archiveTodo(todo.id, archived: true) }
+                                Button("내용 및 예정 시간 편집") { editingTodo = todo }
+                                Button("보관된 할 일로 이동", role: .destructive) { store.archiveTodo(todo.id, archived: true) }
                             }
                     }
                 }
@@ -203,18 +206,18 @@ struct TodoView: View {
                     }
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Palette.mint.opacity(0.18), in: RoundedRectangle(cornerRadius: 18))
                 ShareLink(item: markdown) {
-                    Label("导出待办清单（本机）", systemImage: "arrow.down.to.line")
+                    Label("할 일 목록 내보내기", systemImage: "arrow.down.to.line")
                         .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).frame(maxWidth: .infinity).padding(17)
                         .background(Palette.ink, in: RoundedRectangle(cornerRadius: 14))
                 }.disabled(store.todos.isEmpty)
-                Text("仅分享本机 Markdown 文本，不会推送到眼镜。")
+                Text("이 기기의 Markdown 텍스트만 공유하며 안경으로 보내지 않습니다.")
                     .font(.system(size: 11)).foregroundStyle(Palette.muted).frame(maxWidth: .infinity)
-                NavigationLink("已移除的待办（可恢复）") { RemovedTodosView() }
-                NavigationLink("待发送与冲突") { TodoDeliveryView() }
+                NavigationLink("보관된 할 일 (복원 가능)") { RemovedTodosView() }
+                NavigationLink("전송 대기 및 충돌") { TodoDeliveryView() }
                     .accessibilityIdentifier("todo-delivery-open")
-                Text("长按条目可编辑或移除；计划时间仅记录，不自动创建系统提醒。").font(.caption).foregroundStyle(Palette.muted)
+                Text("길게 누르면 편집하거나 보관할 수 있습니다. 예정 시간은 기록용이며 시스템 알림을 만들지 않습니다.").font(.caption).foregroundStyle(Palette.muted)
             }.padding(24)
-        }.background(Palette.background).navigationTitle("待办清单").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
+        }.background(Palette.background).navigationTitle("할 일 목록").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
             .preference(key: CompanionTabBarHiddenPreference.self, value: true)
             .sheet(item: $editingTodo) { TodoEditorView(todo: $0) }
     }
@@ -230,13 +233,13 @@ struct TodoEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("待办内容", text: $title, axis: .vertical).accessibilityIdentifier("todo-edit-title")
-                Toggle("计划时间（不自动提醒）", isOn: $hasDate)
-                if hasDate { DatePicker("时间", selection: $due) }
-                Text("已关联眼镜的任务会尝试在线同步内容/完成状态；计划时间仅本机保存，不生成通知。").font(.caption)
-            }.navigationTitle("编辑待办").toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("保存") {
+                TextField("할 일 내용", text: $title, axis: .vertical).accessibilityIdentifier("todo-edit-title")
+                Toggle("예정 시간 (자동 알림 없음)", isOn: $hasDate)
+                if hasDate { DatePicker("시간", selection: $due) }
+                Text("안경과 연결된 항목은 온라인 상태에서 내용과 완료 상태 동기화를 시도합니다. 예정 시간은 기기에만 저장하며 알림을 생성하지 않습니다.").font(.caption)
+            }.navigationTitle("할 일 편집").toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("저장") {
                     store.editTodo(todo.id, title: title, dueAt: hasDate ? due : nil); dismiss()
                 }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
             }.onAppear { title = todo.title; hasDate = todo.dueAt != nil; due = todo.dueAt ?? Date() }
@@ -249,9 +252,9 @@ struct RemovedTodosView: View {
     var body: some View {
         List {
             ForEach(store.todos.filter { $0.archivedAt != nil }) { todo in
-                HStack { Text(todo.title); Spacer(); Button("恢复") { store.archiveTodo(todo.id, archived: false) } }
+                HStack { Text(todo.title); Spacer(); Button("복원") { store.archiveTodo(todo.id, archived: false) } }
             }
-        }.navigationTitle("已移除的待办").toolbar(.visible, for: .navigationBar)
+        }.navigationTitle("보관된 할 일").toolbar(.visible, for: .navigationBar)
             .preference(key: CompanionTabBarHiddenPreference.self, value: true)
     }
 }
@@ -267,48 +270,48 @@ struct PrompterView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Picker("提词器模式", selection: $mode) { Text("编辑").tag("编辑"); Text("手机预览").tag("手机预览") }.pickerStyle(.segmented)
+                Picker("프롬프터 모드", selection: $mode) { Text("편집").tag("编辑"); Text("휴대폰 미리보기").tag("手机预览") }.pickerStyle(.segmented)
                 NavigationLink { BookShelfView() } label: {
-                    Card { FeatureRow(icon: "books.vertical", title: "书籍导入与匀速阅读", subtitle: "TXT / EPUB · 章节 · 播放速度 · 续读", status: "本地可用", active: true) }
+                    Card { FeatureRow(icon: "books.vertical", title: "책 가져오기 및 자동 읽기", subtitle: "TXT / EPUB · 장 · 재생 속도 · 이어 읽기", status: "로컬 사용 가능", active: true) }
                 }.buttonStyle(.plain).accessibilityIdentifier("book-shelf")
                 if mode == "编辑" {
                     Card {
-                        HStack { Text("我的提词稿").font(.headline).foregroundStyle(Palette.ink); Spacer(); Text("\(text.count) 字").font(.caption).foregroundStyle(Palette.muted) }
+                        HStack { Text("내 원고").font(.headline).foregroundStyle(Palette.ink); Spacer(); Text("\(text.count)자").font(.caption).foregroundStyle(Palette.muted) }
                         ZStack(alignment: .topLeading) {
-                            if text.isEmpty { Text("写下你想说的话……").foregroundStyle(Palette.muted).padding(.top, 8).padding(.leading, 5) }
+                            if text.isEmpty { Text("말하고 싶은 내용을 입력하세요…").foregroundStyle(Palette.muted).padding(.top, 8).padding(.leading, 5) }
                             TextEditor(text: $text).scrollContentBackground(.hidden).frame(minHeight: 260).accessibilityIdentifier("prompter-input")
                         }.font(.system(size: 16)).padding(10).background(Palette.background, in: RoundedRectangle(cornerRadius: 14))
                     }
                 } else {
-                    Text("手机排版预览").font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.ink)
+                    Text("휴대폰 레이아웃 미리보기").font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.ink)
                     VStack {
                         ScrollView {
-                            Text(pages.isEmpty ? "还没有提词稿，请先在编辑页输入。" : pages[min(page, pages.count - 1)])
+                            Text(pages.isEmpty ? "원고가 없습니다. 편집 화면에서 내용을 입력하세요." : pages[min(page, pages.count - 1)])
                                 .font(.system(size: fontSize, weight: .medium)).foregroundStyle(Palette.mint).lineSpacing(14)
                                 .frame(maxWidth: .infinity, alignment: .leading).padding(24)
                         }.frame(height: 210)
-                        Text(pages.isEmpty ? "无内容" : "手机页 \(page + 1) / \(pages.count)").font(.system(size: 11)).foregroundStyle(Palette.mint.opacity(0.6)).padding(.bottom, 16)
+                        Text(pages.isEmpty ? "내용 없음" : "휴대폰 페이지 \(page + 1) / \(pages.count)").font(.system(size: 11)).foregroundStyle(Palette.mint.opacity(0.6)).padding(.bottom, 16)
                     }.background(Palette.ink, in: RoundedRectangle(cornerRadius: 20))
-                    HStack { Text("字号"); Spacer(); Text("\(Int(fontSize))").monospacedDigit() }.font(.subheadline)
+                    HStack { Text("글자 크기"); Spacer(); Text("\(Int(fontSize))").monospacedDigit() }.font(.subheadline)
                     HStack { Text("A").font(.caption); Slider(value: $fontSize, in: 16...40, step: 1); Text("A").font(.title3) }
                     HStack {
-                        Button { page = max(0, page - 1) } label: { Label("上一页", systemImage: "chevron.left").frame(maxWidth: .infinity) }.disabled(page == 0)
-                        Button { page = min(pages.count - 1, page + 1) } label: { Label("下一页", systemImage: "chevron.right").frame(maxWidth: .infinity) }.disabled(page + 1 >= pages.count)
+                        Button { page = max(0, page - 1) } label: { Label("이전 페이지", systemImage: "chevron.left").frame(maxWidth: .infinity) }.disabled(page == 0)
+                        Button { page = min(pages.count - 1, page + 1) } label: { Label("다음 페이지", systemImage: "chevron.right").frame(maxWidth: .infinity) }.disabled(page + 1 >= pages.count)
                     }.font(.system(size: 13)).padding(13).background(.white, in: RoundedRectangle(cornerRadius: 12))
-                    Text("每页按 140 个字符切分，仅便于手机阅读，不是眼镜分页规则。")
+                    Text("휴대폰 읽기를 위해 140자 단위로 나눕니다. 안경의 페이지 구분과는 다릅니다.")
                         .font(.system(size: 10)).foregroundStyle(Palette.muted)
                 }
                 HStack(spacing: 12) {
                     Button { store.savePrompter(text); saved = true } label: {
-                        Label(saved ? "已保存" : "保存草稿", systemImage: saved ? "checkmark" : "square.and.arrow.down").frame(maxWidth: .infinity)
+                        Label(saved ? "저장됨" : "초안 저장", systemImage: saved ? "checkmark" : "square.and.arrow.down").frame(maxWidth: .infinity)
                     }.accessibilityIdentifier("prompter-save")
-                    ShareLink(item: text) { Label("分享稿件", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }.disabled(text.isEmpty)
+                    ShareLink(item: text) { Label("원고 공유", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }.disabled(text.isEmpty)
                 }.font(.system(size: 13, weight: .medium)).padding(14).background(.white, in: RoundedRectangle(cornerRadius: 13))
                     .overlay(RoundedRectangle(cornerRadius: 13).stroke(Palette.green, lineWidth: 0.75))
                 GlassesPrompterControls(text:text)
-                notice("镜片排版与旋钮操作需实机验证")
+                notice("안경 레이아웃과 다이얼 조작은 실제 기기에서 확인하세요")
             }.padding(24)
-        }.background(Palette.background).navigationTitle("提词器").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
+        }.background(Palette.background).navigationTitle("프롬프터").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
             .preference(key: CompanionTabBarHiddenPreference.self, value: true)
             .onAppear { text = store.prompterText }.onChange(of: text) { _ in saved = false; page = 0 }
     }
@@ -336,26 +339,26 @@ private func notice(_ text: String) -> some View {
 
 struct ProtocolLabView: View {
     private let capabilities: [(String, String, String)] = [
-        ("连接与认证", "手机 → 眼镜 / 眼镜 → 手机", "真机构建已复用原型通信核心。新 Bundle 的配对、后台与解绑仍需实机复验；模拟器不加载核心。"),
-        ("完整语音", "唤醒、音频、识别、回复、退出", "真机构建接入云端 ASR/VAD、Flash 流式和连续插话，先配置密钥并确认开启；新 App 镜片验收待做。"),
-        ("待办反向事件", "眼镜完成 → 手机合并", "本地勾选不是反向协议证据。需保留 ID、修改时间与重复事件防护。"),
-        ("提词与显示", "手机发送 / 眼镜旋钮、翻页", "手机预览不替代镜片验收；分页、排版、头控与退出需要实际操作。"),
-        ("录音与离线同步", "眼镜文件 → 手机归档", "已接在线控制、offset 接收、Ogg/WAV 与归档；离线列表导入、冷启动自动续传和新 App 真机闭环仍待。"),
-        ("天气与通知", "手机内容 → 眼镜展示", "发送成功与镜片显示分开记录，不将系统通知镜像当作自定义协议实现。")
+        ("연결 및 인증", "휴대폰 → 안경 / 안경 → 휴대폰", "기기용 빌드는 통신 모듈을 사용합니다. 새 앱의 페어링, 백그라운드 동작 및 등록 해제는 기기에서 확인해야 합니다. 시뮬레이터는 통신 모듈을 사용하지 않습니다."),
+        ("음성 처리", "호출, 오디오, 인식, 응답, 종료", "클라우드 ASR/VAD, Flash 스트리밍, 연속 끼어들기를 지원합니다. API 키 설정 후 직접 켜세요. 새 앱의 안경 표시는 기기 확인이 필요합니다."),
+        ("안경의 할 일 상태 응답", "안경에서 완료 → 휴대폰에 반영", "휴대폰 체크만으로 안경 응답을 확인할 수 없습니다. ID, 수정 시간 및 중복 이벤트 방지가 필요합니다."),
+        ("프롬프터 및 표시", "휴대폰 전송 / 안경 다이얼 및 페이지 조작", "페이지, 레이아웃, 머리 동작 및 종료를 실제 안경에서 확인하세요. 휴대폰 미리보기와는 별개입니다."),
+        ("녹음 및 오프라인 동기화", "안경 파일 → 휴대폰 보관함", "온라인 제어, offset 기반 수신, Ogg/WAV 및 보관을 지원합니다. 오프라인 가져오기, 재시작 후 자동 이어받기는 추가 확인이 필요합니다."),
+        ("날씨 및 알림", "휴대폰 내용 → 안경 표시", "전송 성공과 안경 표시를 별도로 확인합니다. 시스템 알림 공유와 사용자 알림은 별개입니다.")
     ]
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                notice("本页面是集成边界说明，不会发送实验指令或读取官方 App。")
+                notice("기능의 연동 범위를 설명하는 화면입니다. 실험 명령을 보내거나 공식 앱을 읽지 않습니다.")
                 ForEach(capabilities, id: \.0) { item in
                     Card {
-                        HStack { Text(item.0).font(.headline).foregroundStyle(Palette.ink); Spacer(); Badge(text: "待接入 / 验收") }
+                        HStack { Text(item.0).font(.headline).foregroundStyle(Palette.ink); Spacer(); Badge(text: "연동 / 확인 필요") }
                         Text(item.1).font(.system(size: 11, weight: .medium, design: .monospaced)).foregroundStyle(Palette.green)
                         Text(item.2).font(.system(size: 13)).foregroundStyle(Palette.muted).lineSpacing(5)
                     }
                 }
             }.padding(24)
-        }.background(Palette.background).navigationTitle("协议实验室").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
+        }.background(Palette.background).navigationTitle("프로토콜 실험실").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
             .preference(key: CompanionTabBarHiddenPreference.self, value: true)
     }
 }
@@ -366,43 +369,43 @@ struct SettingsView: View {
     var embedded = false
     var body: some View {
         if embedded { settingsContent } else {
-            NavigationStack { settingsContent.toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } } }
+            NavigationStack { settingsContent.toolbar { ToolbarItem(placement: .confirmationAction) { Button("완료") { dismiss() } } } }
         }
     }
     private var settingsContent: some View {
         Form {
             Section {
-                Toggle("启用界面演示", isOn: $store.demoMode).disabled(store.voice.supportsDevice)
-                Text("仅当前启动有效。演示内容会明确标注，不创建音频、不触发模型、不更改真实设备状态。")
+                Toggle("화면 데모 사용", isOn: $store.demoMode).disabled(store.voice.supportsDevice)
+                Text("이번 실행에만 적용됩니다. 데모는 오디오 생성, 모델 호출 또는 실제 기기 상태 변경을 하지 않습니다.")
                     .font(.footnote).foregroundStyle(Palette.muted)
-            } header: { Text("演示模式") }
-            Section("隐私与安全") {
-                Label("不会自动启用麦克风", systemImage: "mic.slash")
-                Label("不会自动上传音频或草稿", systemImage: "network.slash")
-                Label("模型密钥仅保存到系统钥匙串", systemImage: "key")
-                Label("不接管官方登录和绑定", systemImage: "lock.shield")
+            } header: { Text("데모 모드") }
+            Section("개인정보 및 보안") {
+                Label("마이크를 자동으로 켜지 않음", systemImage: "mic.slash")
+                Label("오디오와 초안을 자동으로 업로드하지 않음", systemImage: "network.slash")
+                Label("모델 API 키는 시스템 키체인에만 저장", systemImage: "key")
+                Label("공식 앱 계정 및 기기 등록을 변경하지 않음", systemImage: "lock.shield")
             }.font(.subheadline)
-            Section("当前构建") {
-                LabeledContent("版本", value: (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0") + " · 研究版")
-                LabeledContent("设备通道", value: store.voice.supportsDevice ? "厂商核心适配 · 待真机复验" : "模拟器禁用")
-                LabeledContent("最低系统", value: "iOS 16")
-                Text("模拟器与编译通过不代表非越狱实机、配对或镜片效果已验证。")
+            Section("현재 빌드") {
+                LabeledContent("버전", value: (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0") + " · 연구용 한국어 빌드")
+                LabeledContent("기기 통신", value: store.voice.supportsDevice ? "제조사 통신 모듈 · 기기 재확인 필요" : "시뮬레이터에서 비활성화")
+                LabeledContent("최소 OS", value: "iOS 16")
+                Text("컴파일 및 시뮬레이터 실행만으로 실제 기기 연결이나 안경 표시가 검증되지는 않습니다.")
                     .font(.footnote).foregroundStyle(Palette.muted)
             }
-        }.navigationTitle("偏好设置").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
+        }.navigationTitle("설정").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
             .preference(key: CompanionTabBarHiddenPreference.self, value: embedded)
     }
 }
 
 struct HelpView: View {
     private let sections: [(String, String)] = [
-        ("现在可以使用什么？", "本机待办与提词稿；手选录音副本并校验、手工文字生成不可覆盖的 Markdown 修订与系统分享；模型配置草稿和隔离的 Keychain 密钥。"),
-        ("哪些还不是正式能力？", "真实蓝牙连接、独立认证、语音采集与识别、模型调用、TTS、镜片显示、反向事件、NAS 自动归档。界面不会将这些显示为成功。"),
-        ("我的录音保存在哪里？", "新归档在Turbo IO自己沙盒的 Documents/VerifiedRecordingArchiveV1。旧 ImportedRecordings 保留原位，只有逐条确认才复制进新档。来源不修改，不自动播放、识别或上传。"),
-        ("演示会改变眼镜吗？", "不会。演示只是手机侧的可视化与纯逻辑实验；顶部持续显示演示标识。退出应用后默认回到真实未连接状态。"),
-        ("怎么接入自己的模型？", "真机语音页使用已验收的阿里云 ASR 与 DeepSeek Flash，在语音服务密钥页配置后明确开启待命。其他模型设置仍是独立草稿，不会改变实际语音服务。"),
-        ("为什么没有重置或升级按钮？", "研究版不会为了界面完整加入危险操作。必须等协议、恢复路径和目标设备被核实后，才会开放有确认步骤的控制。"),
-        ("如何判断真正打通？", "代码测试、手机运行、眼镜实际显示与反向操作分别验收。最终还要在使用自有签名的非越狱 iPhone 上完整验证。")
+        ("어떤 기능을 사용할 수 있나요?", "로컬 할 일, 프롬프터 원고, 오디오 사본 가져오기 및 검증, 직접 입력한 텍스트의 Markdown 수정본과 공유, 모델 설정 초안 및 키체인 저장을 사용할 수 있습니다."),
+        ("어떤 기능에 추가 검증이 필요한가요?", "Bluetooth 연결, 독립 인증, 음성 수집·인식, 모델 호출, TTS, 안경 표시, 안경 응답 및 NAS 자동 보관은 실제 기기와 서비스에서 확인해야 합니다. 검증되지 않은 기능을 성공으로 표시하지 않습니다."),
+        ("녹음은 어디에 저장되나요?", "새 보관 파일은 Turbo IO 앱의 Documents/VerifiedRecordingArchiveV1에 저장합니다. 이전 ImportedRecordings는 유지하며 확인한 항목만 복사합니다. 원본 수정, 자동 재생·인식·업로드는 하지 않습니다."),
+        ("데모가 안경을 변경하나요?", "아니요. 데모는 휴대폰 화면과 로직 테스트입니다. 상단에 데모 표시가 나오며 재실행 시 실제 연결 상태로 돌아갑니다."),
+        ("나의 AI 서비스를 어떻게 연결하나요?", "음성 대화는 Alibaba Cloud ASR와 DeepSeek Flash를 사용합니다. 음성 서비스 API 키 화면에서 설정한 뒤 대기를 켜세요. 다른 모델 설정 초안은 실제 음성 서비스를 바꾸지 않습니다."),
+        ("초기화나 업데이트 버튼이 없는 이유는?", "연구용 빌드입니다. 프로토콜, 복구 방법, 대상 기기가 검증된 기능만 확인 절차와 함께 제공합니다."),
+        ("정상 동작은 어떻게 확인하나요?", "코드 테스트, 앱 실행, 실제 안경 표시 및 안경의 조작 응답을 각각 확인하세요. 본인 서명으로 설치한 일반 아이폰에서 전체 흐름을 검증해야 합니다.")
     ]
     var body: some View {
         ScrollView {
@@ -414,7 +417,7 @@ struct HelpView: View {
                     }
                 }
             }.padding(24)
-        }.background(Palette.background).navigationTitle("使用说明").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
+        }.background(Palette.background).navigationTitle("사용 안내").navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
             .preference(key: CompanionTabBarHiddenPreference.self, value: true)
     }
 }

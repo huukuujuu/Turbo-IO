@@ -14,7 +14,7 @@ final class TodoDeliveryTests: XCTestCase {
         object.removeValue(forKey: "delivery")
         let decoded = try JSONDecoder().decode(LocalTodo.self, from: JSONSerialization.data(withJSONObject: object))
         XCTAssertNil(decoded.delivery)
-        XCTAssertEqual(decoded.deliveryDescription, "仅保存在手机")
+        XCTAssertEqual(decoded.deliveryDescription, "휴대폰에만 저장됨")
     }
     @MainActor func testOfflineEditsPersistAndCoalesceToLatestRevision() throws {
         try fixture { store, defaults in
@@ -46,7 +46,7 @@ final class TodoDeliveryTests: XCTestCase {
             let row = try store.prepareTodoSubmission(store.todos[0].id, device: "A")
             let revision = try XCTUnwrap(row.delivery?.revision)
             store.markTodoSubmitted(row.id, device: "A", revision: revision)
-            XCTAssertEqual(store.todos[0].deliveryDescription, "已提交 · 未逐项确认")
+            XCTAssertEqual(store.todos[0].deliveryDescription, "전송됨 · 항목별 확인 전")
             store.editTodo(row.id, title: "版本二", dueAt: nil)
             store.markTodoSubmitted(row.id, device: "A", revision: revision)
             XCTAssertTrue(store.todos[0].delivery?.pending == true)
@@ -135,7 +135,7 @@ final class TodoDeliveryTests: XCTestCase {
             store.markTodoSubmitted(row.id, device: "A", revision: try XCTUnwrap(row.delivery?.revision))
             XCTAssertTrue(store.applyGlassesTodo(device: "A", id: try XCTUnwrap(row.wireID), status: 1, important: nil))
             XCTAssertTrue(store.todos[0].completed)
-            XCTAssertEqual(store.todos[0].deliveryDescription, "已提交 · 未逐项确认")
+            XCTAssertEqual(store.todos[0].deliveryDescription, "전송됨 · 항목별 확인 전")
         }
     }
 }

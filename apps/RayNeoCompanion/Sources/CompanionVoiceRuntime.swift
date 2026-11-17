@@ -12,8 +12,10 @@ import Combine
     @Published private(set) var hasCredentials = false
     @Published private(set) var continuous = false
     @Published private(set) var cloud = false
-    @Published private(set) var latestEvent = "尚未加载设备通信核心"
+    @Published private(set) var latestEvent = "기기 통신 모듈 로딩 전"
     @Published var error: String?
+    @Published private(set) var testingModel = false
+    @Published private(set) var modelTestResult = ""
     private let timeline: ConversationTimeline?
     weak var codex: CodexCompanion?
     private var activeTurn: UUID?
@@ -58,6 +60,7 @@ import Combine
     #if COMPANION_DEVICE
     let controller = ProbeController()
     private var poll: Timer?
+    private var modelDiagnostic: CloudVoicePipeline?
     #endif
     var supportsDevice: Bool {
         #if COMPANION_DEVICE
@@ -67,8 +70,8 @@ import Combine
         #endif
     }
     var phaseLabel: String {
-        ["disabled": "待命已关闭", "waitingForConnection": "等待认证连接", "idle": "等待眼镜唤醒",
-         "recording": "正在听你说", "processing": "正在生成回答", "displaying": "回答已发完，可继续说"] [phase] ?? "等待状态"
+        ["disabled": "음성 대기 꺼짐", "waitingForConnection": "연결 인증 대기 중", "idle": "안경에서 음성 호출 대기 중",
+         "recording": "듣는 중", "processing": "응답 생성 중", "displaying": "응답 전송 완료 · 계속 말씀하세요"] [phase] ?? "상태 대기 중"
     }
     func prepare() {
         #if COMPANION_DEVICE
@@ -76,11 +79,14 @@ import Combine
         controller.companionBusiness = { [weak self] in self?.onBusiness?($0,$1,$2) }
         controller.companionTools = { [weak self] in self?.codex?.toolDefinitions ?? [] }
         controller.companionExecuteTool = { [weak self] name, arguments, id in
-            guard let codex = self?.codex else { return "Codex工具未配置，未执行。" }
+            guard let codex = self?.codex else { return "Codex 도구가 설정되지 않아 실행하지 않았습니다." }
             return await codex.executeTool(name: name, arguments: arguments, requestID: id)
         }
         controller.companionBusinessLoss = { [weak self] in self?.onBusinessLoss?() }
-        controller.companionLog = { [weak self] line in self?.latestEvent = String(line.prefix(200)) }
+        controller.companionLog = { [weak self] line in
+            self?.latestEvent = String(line.prefix(200))
+            if line.hasPrefix("클라우드 처리 오류: ") { self?.error = line }
+        }
         controller.companionTranscript = { [weak self] id, text, final in
             guard let self, !text.isEmpty else { return }
             if self.activeTurn != id { self.finishTimelineTurn(); self.activeTurn = id }
@@ -139,11 +145,11 @@ import Combine
         #endif
     }
     func start(cloud: Bool, continuous: Bool) {
-        guard featureIsBusy?() != true else { error = "请先结束眼镜录音或提词器任务，再开启语音待命。"; return }
+        guard featureIsBusy?() != true else { error = "안경 녹음이나 프롬프터를 종료한 뒤 음성 대기를 켜세요."; return }
         #if COMPANION_DEVICE
         prepare()
         guard controller.companionStart(cloud: cloud, continuous: continuous) else {
-            error = "需要唯一已认证的眼镜；云对话还需要本 App 的两项密钥。"; refresh(); return
+            error = "인증된 안경 한 대가 필요합니다. 클라우드 대화에는 ASR 및 모델 API 키도 필요합니다."; refresh(); return
         }
         refresh()
         #endif
@@ -160,8 +166,8 @@ import Combine
     }
     func saveKeys(asr: String, llm: String, host: String, enableDefault: Bool = false) -> Bool {
         #if COMPANION_DEVICE
-        guard !enabled else { error = "请先关闭待命，再修改云端凭据。"; return false }
-        guard let target = CloudASRHostSettings.normalize(host) else { error = "请填写自己的阿里云 ASR 主机名（aliyuncs.com），不含协议、路径或端口。"; return false }
+        guard !enabled else { error = "음성 대기를 끈 뒤 클라우드 설정을 변경하세요."; return false }
+        guard let target = CloudASRHostSettings.normalize(host) else { error = "Alibaba Cloud ASR 호스트명(aliyuncs.com)을 입력하세요. 프로토콜, 경로, 포트는 제외합니다."; return false }
         let service = CloudASRHostSettings.service(for: target)
         let a = asr.isEmpty ? CloudVoiceKeys.get(service) != nil : CloudVoiceKeys.save(asr, service: service)
         let b = llm.isEmpty ? CloudVoiceKeys.get(CloudVoiceKeys.llmService) != nil : CloudVoiceKeys.save(llm, service: CloudVoiceKeys.llmService)
@@ -170,13 +176,41 @@ import Combine
             if enableDefault { controller.companionEnableDefaultCloudVoice() }
         }
         refresh()
-        if !a || !b { error = "密钥未完整保存；没有启用云上传。" }
+        if !a || !b { error = "API 키를 모두 저장하지 못했습니다. 클라우드 업로드는 켜지지 않았습니다." }
         return a && b
         #else
-        error = "模拟器不保存真机语音凭据。"; return false
+        error = "시뮬레이터에는 실제 음성 서비스 키를 저장하지 않습니다."; return false
         #endif
     }
     func clearText() { transcript = ""; answer = ""; transcriptFinal = false; modelComplete = false }
+    func testModelConnection() {
+        #if COMPANION_DEVICE
+        guard !testingModel else { return }
+        error = nil
+        modelTestResult = "DeepSeek 연결 테스트 중…"
+        modelDiagnostic?.cancel(clearHistory: true)
+        let pipeline = CloudVoicePipeline()
+        modelDiagnostic = pipeline
+        testingModel = true
+        pipeline.log = { [weak self] line in
+            NSLog("[CloudModelDiagnostic] %@", line)
+            self?.latestEvent = KoreanDiagnostics.display(line)
+            if line.hasPrefix("DeepSeek API 잔액 조회 ·") || line.hasPrefix("클라우드 처리 오류: ") {
+                self?.modelTestResult += "\n" + line
+            }
+            if line.hasPrefix("클라우드 처리 오류: ") { self?.error = line }
+        }
+        pipeline.onError = { [weak self] _ in self?.testingModel = false }
+        pipeline.onText = { [weak self] _, _, final in
+            guard final else { return }
+            self?.testingModel = false
+            self?.latestEvent = "DeepSeek 연결 테스트 성공 · 텍스트 응답 수신 완료"
+            self?.modelTestResult += "\nDeepSeek 연결 테스트 성공 · 텍스트 응답 수신 완료"
+            NSLog("[CloudModelDiagnostic] DeepSeek connection test succeeded")
+        }
+        pipeline.testModelConnection()
+        #endif
+    }
     private func finishTimelineTurn() {
         if let id = activeTurn { timeline?.record(ConversationEvent(id: id, kind: .interrupted)); activeTurn = nil }
     }

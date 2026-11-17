@@ -8,9 +8,9 @@ enum PortableArchiveError: LocalizedError {
     case invalidSnapshot, changed, capacity
     var errorDescription: String? {
         switch self {
-        case .invalidSnapshot: return "导出快照结构不符合要求；没有发布 ZIP。"
-        case .changed: return "快照或 ZIP 的内容复核失败；原归档保留，没有发布分享文件。"
-        case .capacity: return "本机导出目录已达到 20 次导出限制，请在 ZIP 导出副本页面整理；不会自动删除旧包。"
+        case .invalidSnapshot: return "내보내기 사본 구조가 유효하지 않아 ZIP을 생성하지 않았습니다."
+        case .changed: return "사본 또는 ZIP 검증 실패 · 원본은 유지하며 공유 파일을 만들지 않았습니다."
+        case .capacity: return "내보내기 사본이 20개 한도에 도달했습니다. ZIP 사본 화면에서 정리하세요. 기존 파일은 자동 삭제하지 않습니다."
         }
     }
 }
@@ -72,14 +72,14 @@ enum PortableArchiveZIP {
         }
     }
     private static let readme = Data("""
-        # Turbo IO便携归档
+        # Turbo IO 휴대용 보관 파일
 
-        解压后，将整个 RayNeo 文件夹复制到 Obsidian 仓库，保持 notes/ 与 audio/ 同级。
-        Markdown 内的 ../audio/ 链接需要对应音频；不要只复制笔记。
-        snapshot-manifest.json 列出选中条目的长度和 SHA-256，可在 NAS 独立复核。
-        本包只包含明确选择的录音和修订，没有其他会话、密钥、设备绑定或实时录音缓存。
-        打包校验不等于音频可解码、无线无丢失、文字准确、服务器已收到或 Obsidian 已索引。
-        本操作没有联网、自动识别或删除来源。请在目标设备确认文件后再自行整理副本。
+        압축 해제 후 RayNeo 폴더 전체를 Obsidian 보관함에 복사하고 notes/와 audio/를 같은 위치에 유지하세요.
+        Markdown의 ../audio/ 링크에는 해당 오디오가 필요합니다. 메모만 복사하지 마세요.
+        snapshot-manifest.json의 길이와 SHA-256으로 NAS에서 별도 검증할 수 있습니다.
+        선택한 녹음과 수정본만 포함합니다. 다른 대화, API 키, 기기 등록 정보, 실시간 녹음 캐시는 포함하지 않습니다.
+        패키지 검증은 오디오 재생, 무선 무손실, 텍스트 정확성, 서버 수신 또는 Obsidian 인덱싱을 보장하지 않습니다.
+        네트워크, 자동 인식 또는 원본 삭제는 하지 않았습니다. 대상 기기에서 파일을 확인한 뒤 사본을 정리하세요.
         """.utf8)
     static func verify(_ url: URL, folder: String, expected: [Expected]) throws {
         let zip = try ZIPFoundation.Archive(url:url,accessMode:.read)

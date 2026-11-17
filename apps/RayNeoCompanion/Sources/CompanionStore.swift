@@ -38,10 +38,10 @@ enum ConfigurationError: LocalizedError {
     case invalidEndpoint, embeddedCredentials, missingEndpointForCredential, keychain(Int32)
     var errorDescription: String? {
         switch self {
-        case .invalidEndpoint: return "请输入有效的 HTTPS 服务地址；留空可仅保存草稿。"
-        case .embeddedCredentials: return "地址中不能包含账号、密码、查询参数或片段；密钥请填写到独立输入框。"
-        case .missingEndpointForCredential: return "保存密钥前请先填写 HTTPS 地址；密钥必须绑定到具体服务。"
-        case .keychain: return "无法安全保存密钥，请检查设备解锁状态后重试。"
+        case .invalidEndpoint: return "유효한 HTTPS 서비스 주소를 입력하세요. 비워 두면 초안만 저장합니다."
+        case .embeddedCredentials: return "주소에 계정, 비밀번호, 쿼리 또는 조각을 포함할 수 없습니다. API 키는 전용 입력란에 넣으세요."
+        case .missingEndpointForCredential: return "API 키를 저장하기 전에 HTTPS 주소를 입력하세요. 키는 서비스별로 저장합니다."
+        case .keychain: return "API 키를 안전하게 저장할 수 없습니다. 기기 잠금 해제 후 다시 시도하세요."
         }
     }
 }
@@ -206,7 +206,7 @@ final class CompanionStore: ObservableObject {
                                   allowsArchiveTestFixture: arguments.contains("--ui-archive-fixture"), allowsBookTestFixture: arguments.contains("--ui-book-fixture"))
             #if !COMPANION_DEVICE
             if arguments.contains("--ui-todo-conflict-fixture"), store.todos.isEmpty {
-                store.addTodo("合成冲突样本 · 非眼镜数据")
+                store.addTodo("충돌 테스트 샘플 · 실제 안경 데이터 아님")
                 let id = store.todos[0].id
                 let wire = store.assignWireID(id, device: "synthetic-ui-device")
                 store.toggleTodo(id)

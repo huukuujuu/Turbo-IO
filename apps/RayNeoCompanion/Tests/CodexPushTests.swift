@@ -56,7 +56,7 @@ import XCTest
         let f = Fixture(); let p = f.controller(); p.setEnabled(true); f.time += 10
         f.events=[f.event()]; f.succeeds=false
         await p.tick(); f.time += 10_000; await p.tick(); XCTAssertEqual(f.packets,1)
-        XCTAssertTrue(p.status.contains("不自动重发"))
+        XCTAssertTrue(p.status.contains("자동 재전송하지 않습니다"))
     }
     func testTwoTurnsSameAnswerStillTwoNotificationsSpacedOut() async {
         let f = Fixture(); let p = f.controller(); p.setEnabled(true); f.time += 10

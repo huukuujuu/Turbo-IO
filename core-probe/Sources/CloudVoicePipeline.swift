@@ -19,6 +19,7 @@ final class CloudVoicePipeline {
     private var session: URLSession?
     private var socket: URLSessionWebSocketTask?
     private var receiver: Task<Void,Never>?, sender: Task<Void,Never>?, modelTask: Task<Void,Never>?
+    private var balanceTask: Task<Void,Never>?
     private var queue: [Data] = [], queueBytes = 0, totalBytes = 0
     private var ready = false, finishing = false, asrDone = false
     private var parts: [Int:String] = [:]
@@ -28,6 +29,51 @@ final class CloudVoicePipeline {
     private var turns = StreamingASRTurns()
     private var modelID: UUID?
     private let noRedirect = NoCloudRedirect()
+
+    /// Explicit connection check: fixed text only, no microphone or glasses output.
+    func testModelConnection() {
+        precondition(Thread.isMainThread)
+        cancel(clearHistory: true)
+        let current = UUID()
+        id = current
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForResource = 35
+        config.urlCache = nil; config.httpCookieStorage = nil
+        session = URLSession(configuration: config, delegate: noRedirect, delegateQueue: nil)
+        log?("DeepSeek 연결 테스트 시작 · 고정 테스트 문장만 전송합니다")
+        guard let key = CloudVoiceKeys.get(CloudVoiceKeys.llmService), let session else {
+            fail(current, "DeepSeek API 키가 저장되지 않았습니다"); return
+        }
+        var balanceRequest = URLRequest(url: URL(string: "https://api.deepseek.com/user/balance")!)
+        balanceRequest.setValue("Bearer " + key, forHTTPHeaderField: "Authorization")
+        balanceTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let (data, response) = try await session.data(for: balanceRequest)
+                guard self.id == current, !Task.isCancelled else { return }
+                if let http = response as? HTTPURLResponse {
+                    if http.statusCode == 200, data.count <= 8192,
+                       let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let available = object["is_available"] as? Bool,
+                       let balances = object["balance_infos"] as? [[String: Any]] {
+                        let amounts = balances.prefix(2).compactMap { balance -> String? in
+                            guard let currency = balance["currency"] as? String, ["USD", "CNY"].contains(currency),
+                                  let value = balance["total_balance"] as? String,
+                                  let amount = Double(value), amount.isFinite else { return nil }
+                            return currency + "=" + String(format: "%.4f", amount)
+                        }.joined(separator: " ")
+                        self.log?("DeepSeek API 잔액 조회 · available=\(available) \(amounts)")
+                    } else { self.log?("DeepSeek API 잔액 조회 · HTTP \(http.statusCode)") }
+                }
+            } catch {
+                guard self.id == current, !Task.isCancelled else { return }
+                self.log?("DeepSeek API 잔액 조회를 완료하지 못했습니다 · 텍스트 연결 테스트를 계속합니다")
+            }
+            guard self.id == current, !Task.isCancelled else { return }
+            self.startModel(current, transcript: "연결 테스트입니다. 확인이라고 짧게 답하세요.")
+        }
+    }
 
     func start(id: UUID) {
         precondition(Thread.isMainThread)
@@ -182,8 +228,8 @@ final class CloudVoicePipeline {
         request.setValue("application/json",forHTTPHeaderField:"Content-Type")
         let tools = toolDefinitions?() ?? []
         let allowed = Set(tools.compactMap { ($0["function"] as? [String: Any])?["name"] as? String })
-        let toolPolicy = tools.isEmpty ? "没有工具执行能力，不能声称已创建提醒、待办或执行操作。" : "仅在用户明确要求时调用提供的Codex工具，每轮最多一个。普通聊天直接回答。不得编造执行成功，不得替用户批准权限。用户要求停止朗读或换聊天话题不等于停止Codex任务。任务可后台运行；问进度用codex_status，审批请用户在Turbo IO确认。待办天气等其他工具尚未接入，不能声称执行。"
-        let messages = [["role":"system","content":"你是眼镜上的中文语音助手。用纯文本回答，不用Markdown。默认简洁；用户明确要求篇幅时遵循，例如约300字。" + toolPolicy]] + history.suffix(6) + [["role":"user","content":transcript]]
+        let toolPolicy = tools.isEmpty ? "도구 실행 기능이 없으므로 알림이나 할 일을 만들었거나 작업을 실행했다고 말하지 마세요." : "사용자가 명확히 요청했을 때만 제공된 Codex 도구를 사용하며 한 번에 하나만 호출하세요. 일반 대화에는 직접 답하세요. 실행 성공을 꾸미거나 사용자 대신 권한을 승인하지 마세요. 읽어주기 중지나 대화 주제 변경은 Codex 작업 중지 요청이 아닙니다. 작업은 백그라운드에서 계속되며 진행 상황은 codex_status로 조회하세요. 승인은 사용자가 Turbo IO에서 직접 확인해야 합니다. 할 일, 날씨 등의 다른 도구는 연결되지 않았으므로 실행했다고 말하지 마세요."
+        let messages = [["role":"system","content":"당신은 스마트 안경의 음성 도우미입니다. 기본적으로 한국어로 간결하게 답하되, 사용자가 다른 언어나 분량을 명시하면 따르세요. Markdown 없이 일반 텍스트로 답하세요. " + toolPolicy]] + history.suffix(6) + [["role":"user","content":transcript]]
         var body: [String: Any] = ["model":"deepseek-v4-flash","thinking":["type":"disabled"],"stream":true,"max_tokens":1024,"messages":messages]
         if !tools.isEmpty { body["tools"] = tools; body["tool_choice"] = "auto"; body["parallel_tool_calls"] = false }
         do { request.httpBody = try JSONSerialization.data(withJSONObject:body) }
@@ -193,7 +239,8 @@ final class CloudVoicePipeline {
             do {
                 let (bytes,response) = try await session.bytes(for:request)
                 guard self.id == current, self.modelID == responseID else { return }
-                guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw CloudError.remote }
+                guard let http = response as? HTTPURLResponse else { throw CloudError.invalid }
+                guard http.statusCode == 200 else { throw CloudError.http(http.statusCode) }
                 self.log?("DeepSeek HTTP200；flash/thinking disabled/stream true")
                 var line = Data(), text = "", received = 0
                 var coalescer = AnswerDeltaCoalescer()
@@ -249,7 +296,32 @@ final class CloudVoicePipeline {
                     guard self.id == current, self.modelID == responseID else { return }
                     self.onText?(responseID,chunk.text,chunk.final)
                 }
-            } catch { if self.id == current && self.modelID == responseID && !Task.isCancelled { self.fail(current,"模型请求或流式响应失败") } }
+            } catch {
+                if self.id == current && self.modelID == responseID && !Task.isCancelled {
+                    let reason: String
+                    switch error {
+                    case CloudError.http(let status):
+                        let hint: String
+                        switch status {
+                        case 400, 422: hint = "요청 형식 또는 모델 설정을 확인해야 합니다"
+                        case 401: hint = "DeepSeek API 키 인증에 실패했습니다. Alibaba 키와 바뀌지 않았는지 확인하세요"
+                        case 402: hint = "DeepSeek API 잔액이 부족합니다"
+                        case 403: hint = "DeepSeek API 접근이 거부됐습니다"
+                        case 429: hint = "DeepSeek 호출 한도를 초과했습니다. 잠시 후 재시도하세요"
+                        case 500...599: hint = "DeepSeek 서버 오류입니다. 잠시 후 재시도하세요"
+                        default: hint = "DeepSeek 요청이 실패했습니다"
+                        }
+                        reason = "DeepSeek HTTP \(status) · \(hint)"
+                    case let error as URLError:
+                        reason = "DeepSeek 네트워크 오류 · code=\(error.code.rawValue)"
+                    case CloudError.limit:
+                        reason = "DeepSeek 응답이 앱의 처리 한도를 초과했습니다"
+                    default:
+                        reason = "DeepSeek 스트리밍 응답을 처리하지 못했습니다"
+                    }
+                    self.fail(current, reason)
+                }
+            }
         }
     }
     static func lensText(_ source: String) -> String {
@@ -266,8 +338,8 @@ final class CloudVoicePipeline {
         precondition(Thread.isMainThread)
         id = nil
         modelID = nil; turns = StreamingASRTurns()
-        receiver?.cancel(); sender?.cancel(); modelTask?.cancel()
-        receiver = nil; sender = nil; modelTask = nil
+        receiver?.cancel(); sender?.cancel(); modelTask?.cancel(); balanceTask?.cancel()
+        receiver = nil; sender = nil; modelTask = nil; balanceTask = nil
         socket?.cancel(with:.goingAway,reason:nil); socket = nil
         session?.invalidateAndCancel(); session = nil
         queue.removeAll(); queueBytes = 0; totalBytes = 0; parts.removeAll()
@@ -277,10 +349,10 @@ final class CloudVoicePipeline {
     }
     private func fail(_ current: UUID, _ reason: String) {
         guard id == current else { return }
-        log?("云链路失败：\(reason)；未记录服务端错误正文")
+        log?("클라우드 처리 오류: \(reason)")
         cancel(); onError?(current)
     }
-    private enum CloudError: Error { case invalid, remote, limit }
+    private enum CloudError: Error { case invalid, remote, limit, http(Int) }
 }
 private final class NoCloudRedirect: NSObject, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,

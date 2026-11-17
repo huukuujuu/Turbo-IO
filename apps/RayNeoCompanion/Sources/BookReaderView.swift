@@ -8,15 +8,15 @@ struct BookShelfView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("把书变成提词稿").font(.title2.bold()).foregroundStyle(Palette.ink)
-                Text("TXT · EPUB · 章节阅读 · 匀速滚动\n只在本机提取文字，不上传，不启动麦克风。").font(.subheadline).foregroundStyle(Palette.muted)
-                PrimaryButton(title: library.busy ? "正在读取…" : "从文件导入书籍", icon: "square.and.arrow.down", enabled: !library.busy) { importing = true }
+                Text("책을 프롬프터 원고로").font(.title2.bold()).foregroundStyle(Palette.ink)
+                Text("TXT · EPUB · 장별 읽기 · 자동 스크롤\n기기에서 텍스트만 추출하며 업로드하거나 마이크를 켜지 않습니다.").font(.subheadline).foregroundStyle(Palette.muted)
+                PrimaryButton(title: library.busy ? "읽는 중…" : "파일에서 책 가져오기", icon: "square.and.arrow.down", enabled: !library.busy) { importing = true }
                     .accessibilityIdentifier("import-book")
                 if library.allowsTestFixture {
-                    Button("导入合成验收书籍") { Task { await library.importTestFixture() } }.disabled(library.busy).accessibilityIdentifier("book-import-fixture")
+                    Button("테스트용 책 가져오기") { Task { await library.importTestFixture() } }.disabled(library.busy).accessibilityIdentifier("book-import-fixture")
                 }
                 if library.books.isEmpty {
-                    Card { EmptyState(icon: "books.vertical", title: "你的随身书架", detail: "在这里选文件，或在第三方 App 分享菜单选择“用Turbo IO打开”。支持无 DRM 的文字 EPUB；不保留图片与复杂排版。") }
+                    Card { EmptyState(icon: "books.vertical", title: "내 책장", detail: "파일을 선택하거나 다른 앱의 공유 메뉴에서 Turbo IO로 여세요. DRM 없는 텍스트 EPUB을 지원하며 이미지와 복잡한 서식은 보존하지 않습니다.") }
                 }
                 ForEach(library.books) { book in
                     NavigationLink { BookReaderView(book: book) } label: {
@@ -25,7 +25,7 @@ struct BookShelfView: View {
                                 Image(systemName: "book.closed").font(.title).foregroundStyle(Palette.green)
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(book.title).font(.headline).foregroundStyle(Palette.ink).lineLimit(2)
-                                    Text("\(book.sourceExtension.uppercased()) · \(book.chapters.count) 个阅读分段").font(.caption).foregroundStyle(Palette.muted)
+                                    Text("\(book.sourceExtension.uppercased()) · 읽기 구간 \(book.chapters.count)개").font(.caption).foregroundStyle(Palette.muted)
                                 }
                                 Spacer(); Image(systemName: "chevron.right").foregroundStyle(Palette.muted)
                             }
@@ -33,18 +33,18 @@ struct BookShelfView: View {
                     }.buttonStyle(.plain)
                         .accessibilityIdentifier("book-row-\(book.id.uuidString)")
                 }
-                Text("手机匀速预览已接入。眼镜传稿、滚动参数与旋钮进度同步仍需接线和真机验收；不会把手机像素速度当成镜片速度。")
+                Text("휴대폰 자동 스크롤 미리보기를 지원합니다. 안경 전송, 스크롤 설정, 다이얼 진행률 동기화는 실제 기기에서 확인해야 합니다. 휴대폰 속도와 안경 속도는 다릅니다.")
                     .font(.caption).foregroundStyle(Palette.muted)
             }.padding(24)
-        }.background(Palette.background).navigationTitle("书籍提词").navigationBarTitleDisplayMode(.inline)
+        }.background(Palette.background).navigationTitle("책 프롬프터").navigationBarTitleDisplayMode(.inline)
             .toolbar(.visible, for: .navigationBar)
             .preference(key: CompanionTabBarHiddenPreference.self, value: true)
             .task { await library.load() }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.plainText, UTType(filenameExtension: "epub") ?? .data]) { result in
-                switch result { case .success(let url): Task { await library.importFile(url) }; case .failure: library.error = "未能打开所选文件。" }
+                switch result { case .success(let url): Task { await library.importFile(url) }; case .failure: library.error = "선택한 파일을 열 수 없습니다." }
             }
-            .alert("书籍导入", isPresented: Binding(get: { library.error != nil }, set: { if !$0 { library.error = nil } })) {
-                Button("知道了", role: .cancel) {}
+            .alert("책 가져오기", isPresented: Binding(get: { library.error != nil }, set: { if !$0 { library.error = nil } })) {
+                Button("확인", role: .cancel) {}
             } message: { Text(library.error ?? "") }
     }
 }
@@ -72,26 +72,26 @@ struct BookReaderView: View {
     }
     var body: some View {
         VStack(spacing: 15) {
-            Picker("章节", selection: $chapter) {
+            Picker("장", selection: $chapter) {
                 ForEach(book.chapters) { item in Text(item.title).tag(item.id) }
             }.lineLimit(1).accessibilityIdentifier("book-chapter")
-            HStack { Badge(text: "手机预览"); Spacer(); Text(String(format: "%.1f%%", progress * 100)).font(.caption.monospacedDigit()).accessibilityIdentifier("book-progress") }
+            HStack { Badge(text: "휴대폰 미리보기"); Spacer(); Text(String(format: "%.1f%%", progress * 100)).font(.caption.monospacedDigit()).accessibilityIdentifier("book-progress") }
             UniformReadingText(text: book.chapters[chapter].text, fontSize: fontSize, speed: speed,
                                playing: $playing, progress: $progress, jumpID: jump, jumpProgress: initialPosition)
                 .clipShape(RoundedRectangle(cornerRadius: 20)).frame(maxHeight: .infinity)
                 .accessibilityIdentifier("book-reading-text")
             HStack {
-                Button { seek(max(0, progress - 0.1)) } label: { Image(systemName: "backward.end").frame(width: 50, height: 44) }.accessibilityLabel("向前翻阅")
-                PrimaryButton(title: playing ? "暂停" : "匀速播放", icon: playing ? "pause.fill" : "play.fill") {
+                Button { seek(max(0, progress - 0.1)) } label: { Image(systemName: "backward.end").frame(width: 50, height: 44) }.accessibilityLabel("이전 구간")
+                PrimaryButton(title: playing ? "일시정지" : "일정 속도로 재생", icon: playing ? "pause.fill" : "play.fill") {
                     if progress >= 0.999 { seek(0) }
                     playing.toggle()
                 }.accessibilityIdentifier("book-play")
-                Button { seek(min(1, progress + 0.1)) } label: { Image(systemName: "forward.end").frame(width: 50, height: 44) }.accessibilityLabel("向后翻阅")
+                Button { seek(min(1, progress + 0.1)) } label: { Image(systemName: "forward.end").frame(width: 50, height: 44) }.accessibilityLabel("다음 구간")
             }
-            HStack { Text("慢"); Slider(value: $speed, in: 8...80, step: 2); Text("快"); Text("\(Int(speed)) pt/s").font(.caption.monospacedDigit()) }
-            HStack { Text("字号").font(.caption); Slider(value: $fontSize, in: 18...40, step: 1); Text("\(Int(fontSize))").font(.caption) }
-            Text("拖动即暂停 · 切章不自动播放 · 离页/锁屏暂停\n速度仅指手机滚动；到本段结尾自动停止。").font(.system(size: 10)).foregroundStyle(Palette.muted)
-            Button(savedDraft ? "已复制到提词草稿" : "将当前分段用作提词稿") { confirmDraft = true }.font(.subheadline)
+            HStack { Text("느리게"); Slider(value: $speed, in: 8...80, step: 2); Text("빠르게"); Text("\(Int(speed)) pt/s").font(.caption.monospacedDigit()) }
+            HStack { Text("글자 크기").font(.caption); Slider(value: $fontSize, in: 18...40, step: 1); Text("\(Int(fontSize))").font(.caption) }
+            Text("드래그하면 일시정지 · 장을 바꿔도 자동 재생하지 않음 · 화면 이탈/잠금 시 정지\n속도는 휴대폰 스크롤 기준이며 구간 끝에서 멈춥니다.").font(.system(size: 10)).foregroundStyle(Palette.muted)
+            Button(savedDraft ? "프롬프터 초안으로 복사됨" : "현재 구간을 프롬프터 원고로 사용") { confirmDraft = true }.font(.subheadline)
                 .accessibilityIdentifier("book-use-draft")
         }.padding(.horizontal, 22).padding(.bottom, 18).background(Palette.background)
             .navigationTitle(book.title).navigationBarTitleDisplayMode(.inline).toolbar(.visible, for: .navigationBar)
@@ -102,8 +102,8 @@ struct BookReaderView: View {
             .onChange(of: speed) { _ in if !playing { save() } }
             .onChange(of: scenePhase) { value in if value != .active { playing = false; save() } }
             .onDisappear { playing = false; save() }
-            .confirmationDialog("会替换本机当前提词草稿，不会修改原书或发送到眼镜。", isPresented: $confirmDraft) {
-                Button("替换本机草稿") { store.savePrompter(book.chapters[chapter].text); savedDraft = true }
+            .confirmationDialog("현재 프롬프터 초안을 대체합니다. 원본 책을 수정하거나 안경에 전송하지 않습니다.", isPresented: $confirmDraft) {
+                Button("초안 대체") { store.savePrompter(book.chapters[chapter].text); savedDraft = true }
             }
     }
     private func seek(_ value: Double) { playing = false; progress = value; initialPosition = value; jump = UUID(); save() }

@@ -22,9 +22,9 @@ import Combine
         String(decoding:text.utf8.prefix(bytes),as:UTF8.self)
     }
     func newUtterance() { guard enabled else { return }; question = ""; answer = ""; round = nil }
-    private let apps = ["com.rayneo.liteos.recorder":"录音", "com.rayneo.liteos.aiSubtitle":"字幕",
-        "com.rayneo.liteos.conversationAssist":"实时提示", "com.rayneo.liteos.todo":"待办",
-        "com.rayneo.liteos.prompter":"提词器", "com.rayneo.liteos.ai_memory":"全天智记"]
+    private let apps = ["com.rayneo.liteos.recorder":"녹음", "com.rayneo.liteos.aiSubtitle":"자막",
+        "com.rayneo.liteos.conversationAssist":"실시간 안내", "com.rayneo.liteos.todo":"할 일",
+        "com.rayneo.liteos.prompter":"프롬프터", "com.rayneo.liteos.ai_memory":"일상 기록"]
     func reset() {
         page = [:]; screen = nil; question = ""; answer = ""; round = nil
         events = []; sequence = 0; lastInbound = nil; session = UUID().uuidString
@@ -32,17 +32,17 @@ import Combine
     func connection(_ ready: Bool, phase: String) {
         if connected != ready {
             connected = ready
-            if enabled { event("connection", detail: ready ? "唯一眼镜已认证" : "眼镜连接不可用；旧回报失效") }
+            if enabled { event("connection", detail: ready ? "안경 한 대 인증 완료" : "안경 연결 불가 · 이전 응답 무효") }
             // A new link must earn a new page observation; never label old data current.
             page = [:]; screen = nil; lastInbound = nil; question = ""; answer = ""; round = nil
         }
         self.phase = String(phase.prefix(60))
     }
-    func loss() { guard enabled else { return }; page = [:]; screen = nil; event("loss", detail: "接收队列丢包；页面状态未知") }
+    func loss() { guard enabled else { return }; page = [:]; screen = nil; event("loss", detail: "수신 패킷 누락 · 화면 상태 미확인") }
     func voiceMetadata(type: UInt32) {
         guard enabled, connected, ![3,163,164].contains(type) else { return }
         lastInbound = Date().timeIntervalSince1970
-        event("received",detail:"助手上行类型 \(type) · 仅类型观察",business:13,type:type)
+        event("received",detail:"도우미 수신 type \(type) · 유형 정보만 관찰",business:13,type:type)
     }
     func packet(_ data: Data, business: UInt8, inbound: Bool) {
         guard enabled, connected, data.count <= 131_100,
@@ -51,26 +51,26 @@ import Combine
         if business == 14, !wire.bytes.isEmpty { return }
         let now = Date().timeIntervalSince1970
         if inbound { lastInbound = now }
-        var detail = "业务 \(business) / 类型 \(wire.type) · \(data.count) B"
+        var detail = "업무 \(business) / type \(wire.type) · \(data.count) B"
         let j = wire.json
         if inbound, business == 15, wire.type == 24, j["cmd"] as? String == "glass_preview",
            let payload = j["payload"] as? [String: Any], let raw = payload["data"] as? String,
            raw.utf8.count <= 16_384, let bytes = raw.data(using: .utf8),
            let p = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any],
            let scene = DeviceBusinessWire.integer(p,"scence") ?? DeviceBusinessWire.integer(p,"scene") {
-            var result: [String:Any] = ["scene":scene,"name":[0:"仪表盘",1:"应用菜单",2:"应用页面"][scene] ?? "未知场景", "at":now]
+            var result: [String:Any] = ["scene":scene,"name":[0:"대시보드",1:"앱 메뉴",2:"앱 화면"][scene] ?? "알 수 없는 화면", "at":now]
             if let index = DeviceBusinessWire.integer(p,"index") { result["index"] = index }
             if let app = p["app"] as? [String:Any] {
-                result["app"] = apps[app["name"] as? String ?? ""] ?? "未知应用"
+                result["app"] = apps[app["name"] as? String ?? ""] ?? "알 수 없는 앱"
                 if let action = DeviceBusinessWire.integer(app,"action") { result["action"] = action }
             }
             // Exit is an event, not evidence that the exited app remains on screen.
-            if result["action"] as? Int64 == 2 { result["name"] = "应用已退出；等待下一页面" }
-            page = result; detail = "glass_preview · \(result["name"] ?? "未知") · \(result["app"] ?? "")"
+            if result["action"] as? Int64 == 2 { result["name"] = "앱 종료됨 · 다음 화면 대기 중" }
+            page = result; detail = "glass_preview · \(result["name"] ?? "알 수 없음") · \(result["app"] ?? "")"
         }
         if inbound, business == 15, j["cmd"] as? String == "screen_status",
            let payload = j["payload"] as? [String:Any], let value = DeviceBusinessWire.integer(payload,"value") {
-            screen = value; detail = "screen_status 原始值 \(value)（不推定像素）"
+            screen = value; detail = "screen_status 원본 값 \(value) (화면 픽셀을 추정하지 않음)"
         }
         var text: String?
         if !inbound, includesText {
@@ -102,7 +102,7 @@ import Combine
         var value: [String:Any] = ["version":1,"session":session,"sampledAt":Date().timeIntervalSince1970,
             "connected":connected,"phase":phase,"includesText":includesText,"page":page,
             "question":includesText ? question : "","answer":includesText ? answer : "","events":events,
-            "notice":"页面为状态重绘，不是镜片截图；submitted 仅表示提交 SDK 成功。"]
+            "notice":"기기 상태를 재구성한 화면이며 안경 스크린샷은 아닙니다. submitted는 SDK 요청 성공만 의미합니다."]
         if let screen { value["screenRaw"] = screen }; if let lastInbound { value["lastInbound"] = lastInbound }
         return value
     }

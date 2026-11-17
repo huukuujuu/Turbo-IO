@@ -33,7 +33,7 @@ final class HeadControlNotificationTestTests: XCTestCase {
         test.receive(device: "synthetic-glasses", wire: callback)
 
         XCTAssertNil(test.pendingID)
-        XCTAssertEqual(test.lastDecision, "已收到点头确认（仅测试回调）")
+        XCTAssertEqual(test.lastDecision, "끄덕여 확인한 결과 수신됨 (테스트 응답만)")
         XCTAssertEqual(link.packets.count, 3)
         XCTAssertEqual(link.packets[1].1.type, 33)
         XCTAssertEqual(DeviceBusinessWire.integer(link.packets[1].1.json, "type"), 2)

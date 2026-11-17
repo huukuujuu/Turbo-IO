@@ -48,7 +48,7 @@ import XCTest
         let p = try XCTUnwrap(wire.json["payload"] as? [String:Any])
         let inner = try XCTUnwrap(p["data"] as? String)
         let j = try XCTUnwrap(JSONSerialization.jsonObject(with:Data(inner.utf8)) as? [String:Any])
-        XCTAssertEqual(j["location"] as? String,"北京"); XCTAssertEqual(j["temp"] as? Int,22)
+        XCTAssertEqual(j["location"] as? String,"Beijing"); XCTAssertEqual(j["temp"] as? Int,22)
         XCTAssertEqual(j["icon"] as? Int,104); XCTAssertNil(j["hourly"])
         XCTAssertThrowsError(try QWeatherClient.dashboardWire(sample(),configuration:config(),icon:104,now:time.addingTimeInterval(601)))
     }
@@ -56,7 +56,7 @@ import XCTest
         var device: String?, queries = 0
         let c = QWeatherDashboard(defaults:try defaults(config()),device:{device},occupied:{false},readKey:{_ in nil},fetch:{_,_ in queries += 1; throw QWeatherError.network},send:{_ in XCTFail()})
         c.tick(); device = "A"; c.tick(); await settle(c); XCTAssertEqual(queries,0)
-        XCTAssertTrue(c.status.contains("API Key"))
+        XCTAssertTrue(c.status.contains("API 키"))
     }
     func testCandidateRequiresExplicitSendAndCardAckCannotCompleteIt() async throws {
         var sends = 0; let s = sample()
@@ -66,11 +66,11 @@ import XCTest
         func ack(_ command: String, _ value: Any = 0) throws -> DeviceBusinessWire {
             try DeviceBusinessWire(DeviceBusinessWire.encode(type:19,json:["cmd":command,"payload":["value":value]]))
         }
-        c.receive(device:"A",wire:try ack("weather_update")); XCTAssertTrue(c.reply.contains("等待"))
-        c.receive(device:"B",wire:try ack("current_weather_update")); XCTAssertTrue(c.reply.contains("等待"))
-        c.receive(device:"A",wire:try ack("current_weather_update",true)); XCTAssertTrue(c.reply.contains("等待"))
+        c.receive(device:"A",wire:try ack("weather_update")); XCTAssertTrue(c.reply.contains("대기"))
+        c.receive(device:"B",wire:try ack("current_weather_update")); XCTAssertTrue(c.reply.contains("대기"))
+        c.receive(device:"A",wire:try ack("current_weather_update",true)); XCTAssertTrue(c.reply.contains("대기"))
         c.receive(device:"A",wire:try ack("current_weather_update")); XCTAssertTrue(c.reply.contains("value=0"))
-        XCTAssertTrue(c.reply.contains("没有请求 ID"))
+        XCTAssertTrue(c.reply.contains("요청 ID가 없으므로"))
     }
     func testVerifiedAutoOnceReconnectUsesCacheAndBusyDefers() async throws {
         var device: String? = "A", occupied = true, queries = 0, sends = 0
@@ -92,8 +92,8 @@ import XCTest
         var clock = time; let s = sample()
         let c = QWeatherDashboard(defaults:try defaults(config(verified:true)),device:{"A"},occupied:{false},readKey:{_ in "synthetic"},fetch:{_,_ in s},now:{clock},send:{_ in })
         c.tick(); await settle(c); clock = time.addingTimeInterval(9); c.tick()
-        XCTAssertTrue(c.reply.contains("未观察"))
+        XCTAssertTrue(c.reply.contains("응답을 받지 못했습니다"))
         let failed = QWeatherDashboard(defaults:try defaults(config(verified:true)),device:{"A"},occupied:{false},readKey:{_ in "synthetic"},fetch:{_,_ in s},send:{_ in throw DeviceFeatureError.disconnected})
-        failed.tick(); await settle(failed); XCTAssertTrue(failed.reply.contains("失败"))
+        failed.tick(); await settle(failed); XCTAssertTrue(failed.reply.contains("실패"))
     }
 }

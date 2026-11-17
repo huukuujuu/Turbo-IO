@@ -121,7 +121,7 @@ final class ArchiveIntegrationTests: XCTestCase {
         XCTAssertNil(failure)
         XCTAssertNil(controller.latestVerifications[recording.id])
         XCTAssertNotNil(controller.errorMessage)
-        XCTAssertTrue(controller.errorMessage?.contains("不承诺失败即回滚") == true)
+        XCTAssertTrue(controller.errorMessage?.contains("실패 시 자동 롤백을 보장하지 않습니다") == true)
         XCTAssertNil(controller.statusMessage)
         XCTAssertEqual(try Data(contentsOf: url), modified)
         XCTAssertFalse(controller.isBusy)
@@ -195,7 +195,7 @@ final class ArchiveIntegrationTests: XCTestCase {
         let title = LocalArchiveRepository.defaultTitle(String(repeating: "眼镜👨‍👩‍👧‍👦", count: 50) + "\n尾部")
         XCTAssertLessThanOrEqual(title.utf8.count, 256)
         XCTAssertFalse(title.contains("\n"))
-        XCTAssertEqual(LocalArchiveRepository.defaultTitle("\n\t"), "本地录音")
+        XCTAssertEqual(LocalArchiveRepository.defaultTitle("\n\t"), "로컬 녹음")
     }
 
     private func sandbox() throws -> URL {

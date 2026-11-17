@@ -75,8 +75,8 @@ final class NotificationWireTests: XCTestCase {
         for id in ["", "plain", "com..app", "com.foo/bar", "com.应用", "com.app\n"] { XCTAssertFalse(GlassesNotificationProtocol.validAppID(id)) }
         var p = NotificationPreferences(); p.sources.append(p.sources[0])
         XCTAssertThrowsError(try GlassesNotificationProtocol.settings(p))
-        XCTAssertTrue(GlassesNotificationProtocol.stateLabel(0).contains("不代表已读"))
-        XCTAssertTrue(GlassesNotificationProtocol.stateLabel(99).contains("未知"))
+        XCTAssertTrue(GlassesNotificationProtocol.stateLabel(0).contains("읽음 상태 아님"))
+        XCTAssertTrue(GlassesNotificationProtocol.stateLabel(99).contains("알 수 없는"))
     }
 }
 
@@ -163,10 +163,10 @@ final class NotificationWireTests: XCTestCase {
         try receive(c,type:3,json:["notificationUID":uid,"state":1],bytes:Data([1]))
         XCTAssertTrue(c.awaitingState)
         try receive(c,type:4,json:["notificationUID":uid,"cmd":1])
-        XCTAssertTrue(c.operationStatus?.contains("不执行任何工具") == true)
+        XCTAssertTrue(c.operationStatus?.contains("도구를 실행하지 않습니다") == true)
         XCTAssertTrue(c.awaitingState)
         try receive(c,type:3,json:["notificationUID":uid,"state":3])
-        XCTAssertFalse(c.awaitingState); XCTAssertTrue(c.testStatus.contains("免打扰"))
+        XCTAssertFalse(c.awaitingState); XCTAssertTrue(c.testStatus.contains("방해 금지"))
     }
     func testImmediateCallbackDuringSubmissionIsNotLost() throws {
         let (c, link, _) = fixture(); c.setEnabled(true)
@@ -175,14 +175,14 @@ final class NotificationWireTests: XCTestCase {
             try? self.receive(c,type:3,json:["notificationUID":wire.json["notificationUID"]!,"state":1])
         }
         XCTAssertNotNil(c.send(title:"合成",content:"合成"))
-        XCTAssertFalse(c.awaitingState); XCTAssertTrue(c.testStatus.contains("显示中或间隔期"))
+        XCTAssertFalse(c.awaitingState); XCTAssertTrue(c.testStatus.contains("표시 중 또는 알림 간격 대기"))
     }
     func testTimeoutDoesNotRetryOrTurnSDKSubmissionIntoSuccess() async throws {
         let (c, link, _) = fixture(); c.setEnabled(true)
         _ = c.send(title:"合成",content:"合成")
         XCTAssertNil(c.send(title:"不应并发",content:"合成"))
         try await Task.sleep(nanoseconds:100_000_000)
-        XCTAssertFalse(c.awaitingState); XCTAssertTrue(c.testStatus.contains("超时"))
+        XCTAssertFalse(c.awaitingState); XCTAssertTrue(c.testStatus.contains("시간 초과"))
         XCTAssertEqual(link.packets.map(\.type),[18,2])
     }
     func testReconnectNeverReplaysOrAcceptsOldPendingMessage() throws {
@@ -193,18 +193,18 @@ final class NotificationWireTests: XCTestCase {
         XCTAssertTrue(c.sourcesNeedApply); XCTAssertNil(c.reportedEnabled)
         try receive(c,type:3,json:["notificationUID":uid,"state":1])
         XCTAssertFalse(c.testStatus.contains("同 UID 眼镜回报"))
-        XCTAssertNil(c.send(title:"合成",content:"合成")); XCTAssertTrue(c.error?.contains("先向当前眼镜") == true)
+        XCTAssertNil(c.send(title:"合成",content:"合成")); XCTAssertTrue(c.error?.contains("현재 안경에 전체 알림 설정을 먼저") == true)
         XCTAssertEqual(link.packets.count,2)
     }
     func testTransportFailureAndCallbackLossRemainUnconfirmed() throws {
         let (c, link, _) = fixture(); c.setEnabled(true)
         link.fails = true
         XCTAssertNil(c.send(title:"合成",content:"合成")); XCTAssertFalse(c.awaitingState)
-        XCTAssertTrue(c.testStatus.contains("失败"))
+        XCTAssertTrue(c.testStatus.contains("실패"))
         link.fails = false; _ = c.send(title:"合成",content:"合成")
         let uid = try XCTUnwrap(c.lastUID); c.lostMessages()
         try receive(c,type:3,json:["notificationUID":uid,"state":1])
-        XCTAssertFalse(c.awaitingState); XCTAssertTrue(c.testStatus.contains("丢失"))
+        XCTAssertFalse(c.awaitingState); XCTAssertTrue(c.testStatus.contains("누락"))
     }
     func testAvailabilityStrictBooleanTimeoutAndNoFalseFilterACK() async throws {
         let (c, link, _) = fixture(); c.queryAvailability()
@@ -212,7 +212,7 @@ final class NotificationWireTests: XCTestCase {
         try receive(c,type:21,json:["available":1])
         XCTAssertNil(c.ancsAvailable)
         try await Task.sleep(nanoseconds:100_000_000)
-        XCTAssertTrue(c.availabilityStatus.contains("超时"))
+        XCTAssertTrue(c.availabilityStatus.contains("시간 초과"))
         try receive(c,type:21,json:["available":true])
         XCTAssertEqual(c.ancsAvailable,true)
         try receive(c,type:18,json:["notification":true])
@@ -229,7 +229,7 @@ final class NotificationWireTests: XCTestCase {
         let uid = try XCTUnwrap(c.send(title:"private-test-title",content:"private-test-body"))
         try receive(c,type:1,json:["appId":"com.example.private","title":"other-private-title","content":"other-private-body"])
         try receive(c,type:3,json:["notificationUID":uid,"state":999])
-        XCTAssertTrue(c.testStatus.contains("未知状态"))
+        XCTAssertTrue(c.testStatus.contains("알 수 없는 상태"))
         let data = try XCTUnwrap(defaults.data(forKey:"companion.v1.notificationPreferences"))
         let text = String(decoding:data,as:UTF8.self)
         XCTAssertFalse(text.contains("private-test")); XCTAssertFalse(text.contains("other-private"))

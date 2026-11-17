@@ -181,7 +181,7 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
         title.text = "RayNeo Core Probe"
         title.font = .preferredFont(forTextStyle: .title1)
         stack.addArrangedSubview(title)
-        for (title, action) in [("1 · 加载核心／刷新状态", #selector(loadCore)), ("2 · 只读发现 BLE", #selector(scan)), ("3 · 检查 MFi 会话", #selector(accessories)), ("4 · SDK 发现", #selector(sdkDiscovery)), ("5 · SDK BLE 连接验证", #selector(connectSDK)), ("6 · 解除绑定（清除眼镜数据）", #selector(confirmUnbind)), ("7 · 显示边界测试／结束", #selector(showDisplayBoundaryTests)), ("8 · 开启语音唤醒", #selector(confirmVoiceWakeup)), ("9 · 持续待命：关闭", #selector(toggleStandby)), ("10 · 云端对话／密钥设置",#selector(showCloudSettings))] {
+        for (title, action) in [("1 · 통신 모듈 로드 / 상태 새로고침", #selector(loadCore)), ("2 · BLE 검색 (읽기 전용)", #selector(scan)), ("3 · MFi 세션 확인", #selector(accessories)), ("4 · SDK 기기 검색", #selector(sdkDiscovery)), ("5 · SDK BLE 연결 확인", #selector(connectSDK)), ("6 · 등록 해제 (안경 데이터 삭제)", #selector(confirmUnbind)), ("7 · 표시 범위 테스트 / 종료", #selector(showDisplayBoundaryTests)), ("8 · 음성 호출 켜기", #selector(confirmVoiceWakeup)), ("9 · 연속 음성 대기: 꺼짐", #selector(toggleStandby)), ("10 · 클라우드 대화 / API 키 설정",#selector(showCloudSettings))] {
             let button = UIButton(type: .system)
             button.setTitle(title, for: .normal)
             button.addTarget(self, action: action, for: .touchUpInside)
@@ -208,7 +208,7 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
         voiceProbe.onArchiveTranscript = { [weak self] id, text, final in self?.companionTranscript?(id,text,final) }
         voiceProbe.cloudTools = { [weak self] in self?.companionTools?() ?? [] }
         voiceProbe.executeCloudTool = { [weak self] name, args, id in
-            guard let execute = self?.companionExecuteTool else { return "Codex未配置，未执行。" }
+            guard let execute = self?.companionExecuteTool else { return "Codex가 설정되지 않아 실행하지 않았습니다." }
             return await execute(name, args, id)
         }
         #endif
@@ -257,11 +257,11 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
         }
         let target = device.deviceID()
         let message = voiceProbe.standby.cloudEnabled
-            ? "当前是云对话：唤醒后音频发往已指定阿里云空间，识别文字发给DeepSeek Flash（关闭思考/流式）。云端判断句末；本地5秒无语音/20秒收音/30秒处理保护。无TTS、无工具执行。日志不记正文，服务可能计费。重开App恢复开关，按钮9关闭。"
-            : "每次真实唤醒后，本机解码并检测语音；连续约0.9秒无语音即回复随机文字，显示10秒后待命。5秒无语音退出，最长收音8秒。不是识别或模型回答，不保存/上传音频。允许后台处理但系统可能挂起。仅对已绑定眼镜有限重连，不自动配对或重置。重开App恢复开关，按钮9关闭。"
-        let alert = UIAlertController(title:"开启持续待命？", message:message, preferredStyle:.alert)
-        alert.addAction(UIAlertAction(title:"取消", style:.cancel))
-        alert.addAction(UIAlertAction(title:"开启持续待命", style:.default) { [weak self] _ in
+            ? "클라우드 모드에서는 호출 후 오디오를 설정한 ASR로, 인식 텍스트를 DeepSeek로 보냅니다. 클라우드가 문장 끝을 판단하며 시간 제한을 적용합니다. TTS는 없고 서비스 요금이 발생할 수 있습니다. 설정한 Codex 도구는 별도 허용 시 사용합니다. 버튼 9로 대기를 끌 수 있습니다."
+            : "직접 호출하면 기기에서 말소리를 감지하고 무작위 테스트 문자를 표시합니다. 음성 인식이나 AI 응답이 아니며 오디오를 저장·업로드하지 않습니다. 5초 무음 또는 최대 8초 수집 제한이 있습니다. 등록된 안경만 재연결하며 버튼 9로 대기를 끌 수 있습니다."
+        let alert = UIAlertController(title:"연속 음성 대기를 켤까요?", message:message, preferredStyle:.alert)
+        alert.addAction(UIAlertAction(title:"취소", style:.cancel))
+        alert.addAction(UIAlertAction(title:"연속 음성 대기 켜기", style:.default) { [weak self] _ in
             guard let self, let linked = self.core?.linkedDevices(), linked.count == 1,
                   let current = linked.first, current.deviceID() == target,
                   current.isConnected(), current.bleStateByte() == 9 else { return }
@@ -315,7 +315,7 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
         voiceProbe.standby.disable()
         standbyTimer?.invalidate(); standbyTimer = nil
         standbyWasReady = false
-        standbyButton?.setTitle("9 · 持续待命：关闭", for:.normal)
+        standbyButton?.setTitle("9 · 연속 음성 대기: 꺼짐", for:.normal)
         #if COMPANION_DEVICE
         log("语音待命已关闭，不再自动回应；设备独立重连仍保留，未改眼镜唤醒开关/绑定")
         #else
@@ -366,13 +366,13 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
             #endif
         }
         voiceProbe.standby.tick(now:now)
-        let labels: [StandbyVoiceSession.Phase:String] = [.disabled:"关闭", .waitingForConnection:"等待连接", .idle:"等待唤醒", .recording:"收音中", .processing:"云端回答中", .displaying:"显示中"]
-        standbyButton?.setTitle("9 · 持续待命：\(labels[voiceProbe.standby.phase] ?? "未知")", for:.normal)
+        let labels: [StandbyVoiceSession.Phase:String] = [.disabled:"꺼짐", .waitingForConnection:"연결 대기 중", .idle:"음성 호출 대기 중", .recording:"듣는 중", .processing:"클라우드 응답 생성 중", .displaying:"표시 중"]
+        standbyButton?.setTitle("9 · 연속 음성 대기: \(labels[voiceProbe.standby.phase] ?? "알 수 없음")", for:.normal)
     }
 
     private func log(_ text: String) {
         #if COMPANION_DEVICE
-        companionLog?(text)
+        companionLog?(KoreanDiagnostics.display(text))
         #endif
         logLines.append(text)
         if logLines.count > 100 { logLines.removeFirst(logLines.count - 100) }
@@ -384,7 +384,7 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
             guard let self else { return }
             self.renderPending = false
-            self.output.text = self.logLines.suffix(28).map { String($0.prefix(180)) }.joined(separator: "\n")
+            self.output.text = self.logLines.suffix(28).map { String(KoreanDiagnostics.display($0).prefix(240)) }.joined(separator: "\n")
             self.output.layoutIfNeeded()
             self.output.setContentOffset(CGPoint(x: 0, y: max(0, self.output.contentSize.height - self.output.bounds.height)), animated: false)
         }
@@ -425,7 +425,7 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
         let bonded = core?.bondedDevices() ?? []
         let linked = core?.linkedDevices() ?? []
         log("本 App 保存的设备: \(bonded.count)；SDK 已连设备: \(linked.count)")
-        for device in linked { logDeviceState(device, prefix: "当前连接") }
+        for device in linked { logDeviceState(device, prefix: "현재 연결") }
     }
 
     @objc private func confirmVoiceProbe() {
@@ -434,9 +434,9 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
             log("没有唯一已认证连接，未就绪语音测试"); return
         }
         let deviceID = device.deviceID()
-        let alert = UIAlertController(title:"准备一次8秒语音测试？", message:"仅在你主动唤醒后请求音频；收到非空音频才在8秒后显示本轮随机测试串，内容与所说的话无关，再过3秒请求退出页面。不是语音识别或模型回答。只记类型/长度，不保存、不上传；90秒不唤醒自动取消。", preferredStyle:.alert)
-        alert.addAction(UIAlertAction(title:"取消", style:.cancel))
-        alert.addAction(UIAlertAction(title:"准备测试", style:.default) { [weak self] _ in
+        let alert = UIAlertController(title:"8초 음성 테스트를 준비할까요?", message:"직접 호출한 뒤에만 오디오를 요청합니다. 오디오 수신 후 8초에 무작위 테스트 문자를 표시하고 3초 뒤 종료합니다. 음성 인식이나 AI 응답이 아니며 저장·업로드하지 않습니다. 90초간 호출이 없으면 취소합니다.", preferredStyle:.alert)
+        alert.addAction(UIAlertAction(title:"취소", style:.cancel))
+        alert.addAction(UIAlertAction(title:"테스트 준비", style:.default) { [weak self] _ in
             guard let current = core.linkedDevices()?.first(where: { $0.deviceID() == deviceID }),
                   current.isConnected(), current.bleStateByte() == 9 else {
                 self?.log("连接已变化，取消语音测试"); return
@@ -448,25 +448,25 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
 
     @objc private func showDisplayBoundaryTests() {
         if voiceProbe.standby.enabled {
-            let menu = UIAlertController(title:"持续待命显示测试",message:"下一次唤醒发送A1至A4四段合成文字，最后一段带校验码；不请求云服务。无10秒强制关闭，验收眼镜自己的收尾行为。",preferredStyle:.actionSheet)
-            menu.addAction(UIAlertAction(title:"下一次唤醒：A1–A4增量测试",style:.default) { [weak self] _ in self?.voiceProbe.armIncrementalFixture() })
+            let menu = UIAlertController(title:"연속 음성 대기 표시 테스트",message:"다음 호출 시 A1~A4 테스트 텍스트를 전송합니다. 마지막 구간에 확인 코드가 있으며 클라우드를 사용하지 않습니다. 강제 종료 없이 안경의 종료 동작을 확인합니다.",preferredStyle:.actionSheet)
+            menu.addAction(UIAlertAction(title:"다음 호출: A1~A4 누적 표시 테스트",style:.default) { [weak self] _ in self?.voiceProbe.armIncrementalFixture() })
             let duplex = voiceProbe.standby.continuousASREnabled
-            menu.addAction(UIAlertAction(title:duplex ? "关闭持续ASR并行实验" : "开启持续ASR并行实验（120秒）",style:.default) { [weak self] _ in self?.voiceProbe.setContinuousASR(!duplex) })
-            menu.addAction(UIAlertAction(title:"结束本轮显示",style:.default) { [weak self] _ in self?.voiceProbe.standby.cancelCurrentRound() })
-            menu.addAction(UIAlertAction(title:"取消",style:.cancel))
+            menu.addAction(UIAlertAction(title:duplex ? "연속 ASR 병렬 실험 끄기" : "연속 ASR 병렬 실험 켜기 (120초)",style:.default) { [weak self] _ in self?.voiceProbe.setContinuousASR(!duplex) })
+            menu.addAction(UIAlertAction(title:"현재 대화 표시 종료",style:.default) { [weak self] _ in self?.voiceProbe.standby.cancelCurrentRound() })
+            menu.addAction(UIAlertAction(title:"취소",style:.cancel))
             menu.popoverPresentationController?.sourceView = view
             menu.popoverPresentationController?.sourceRect = CGRect(x:view.bounds.midX,y:440,width:1,height:1)
             present(menu,animated:true)
             return
         }
-        let menu = UIAlertController(title:"显示边界：语音文字页", message:"只测试固件现有文字页，不是图片/任意UI。每项需主动唤醒，8秒后显示，保持10秒后退出。", preferredStyle:.actionSheet)
+        let menu = UIAlertController(title:"표시 범위: 음성 텍스트 화면", message:"기존 펌웨어의 텍스트 화면만 테스트합니다. 이미지나 임의 화면이 아닙니다. 직접 호출 후 8초에 표시하고 10초 뒤 종료합니다.", preferredStyle:.actionSheet)
         for fixture in DisplayBoundaryFixture.all {
             menu.addAction(UIAlertAction(title:"\(fixture.id) · \(fixture.name)", style:.default) { [weak self] _ in
                 self?.confirmDisplayFixture(fixture)
             })
         }
-        menu.addAction(UIAlertAction(title:"结束当前测试", style:.destructive) { [weak self] _ in self?.voiceProbe.stopDisplayTest() })
-        menu.addAction(UIAlertAction(title:"取消", style:.cancel))
+        menu.addAction(UIAlertAction(title:"현재 테스트 종료", style:.destructive) { [weak self] _ in self?.voiceProbe.stopDisplayTest() })
+        menu.addAction(UIAlertAction(title:"취소", style:.cancel))
         menu.popoverPresentationController?.sourceView = view
         menu.popoverPresentationController?.sourceRect = CGRect(x:view.bounds.midX,y:view.bounds.midY,width:1,height:1)
         present(menu, animated:true)
@@ -478,9 +478,9 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
             log("没有唯一已认证连接，不启动显示边界测试"); return
         }
         let deviceID = device.deviceID()
-        let alert = UIAlertController(title:"\(fixture.id) · \(fixture.name)", message:"\(fixture.text)\n\n仅主动唤醒后短时收音，不保存/上传。8秒后发送上述合成文字，10秒后自动退出。每次只验本项，90秒未唤醒取消。", preferredStyle:.alert)
-        alert.addAction(UIAlertAction(title:"取消", style:.cancel))
-        alert.addAction(UIAlertAction(title:"准备本项测试", style:.default) { [weak self] _ in
+        let alert = UIAlertController(title:"\(fixture.id) · \(fixture.name)", message:"\(fixture.text)\n\n직접 호출한 뒤 짧게 수집하며 저장하거나 업로드하지 않습니다. 8초 후 테스트 텍스트를 보내고 10초 뒤 종료합니다. 90초간 호출이 없으면 취소합니다.", preferredStyle:.alert)
+        alert.addAction(UIAlertAction(title:"취소", style:.cancel))
+        alert.addAction(UIAlertAction(title:"이 테스트 준비", style:.default) { [weak self] _ in
             guard let linked = core.linkedDevices(), linked.count == 1,
                   let current = linked.first, current.deviceID() == deviceID,
                   current.isConnected(), current.bleStateByte() == 9 else {
@@ -497,9 +497,9 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
             log("没有唯一已认证连接，未开启语音唤醒"); return
         }
         let deviceID = device.deviceID()
-        let alert = UIAlertController(title: "开启这副眼镜的语音唤醒？", message: "发送官方实测的 Launcher/type16：set_ai_voice_wakeup，mode=1。只改变唤醒开关；不录音、不上传。需要眼镜回传状态和真人唤醒验收。", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
-        alert.addAction(UIAlertAction(title: "开启测试", style: .default) { [weak self] _ in
+        let alert = UIAlertController(title: "이 안경의 음성 호출을 켤까요?", message: "Launcher/type16의 set_ai_voice_wakeup, mode=1을 전송합니다. 호출 설정만 바꾸며 녹음·업로드하지 않습니다. 안경 상태 응답과 실제 호출을 확인하세요.", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "취소", style: .cancel))
+        alert.addAction(UIAlertAction(title: "테스트 시작", style: .default) { [weak self] _ in
             guard let current = core.linkedDevices()?.first(where: { $0.deviceID() == deviceID }),
                   current.isConnected(), current.bleStateByte() == 9 else {
                 self?.log("连接已变化，取消开启"); return
@@ -521,10 +521,10 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
             log("没有唯一已认证连接，未发消息"); return
         }
         let deviceID = device.deviceID()
-        let text = "自定义连接测试 1730"
-        let alert = UIAlertController(title:"发送固定 ASR 文字？", message:"内容：\(text)\n这是 voiceAssistant/type=5，不是 ANCS 通知。可能需要先唤醒眼镜；实际显示需本人确认。", preferredStyle:.alert)
-        alert.addAction(UIAlertAction(title:"取消", style:.cancel))
-        alert.addAction(UIAlertAction(title:"发送测试", style:.default) { [weak self] _ in
+        let text = "Turbo IO connection test 1730"
+        let alert = UIAlertController(title:"고정 ASR 텍스트를 보낼까요?", message:"내용: \(text)\nvoiceAssistant/type=5 텍스트 테스트입니다. ANCS 알림과는 별개이며 안경에서 호출한 뒤 실제 표시를 확인하세요.", preferredStyle:.alert)
+        alert.addAction(UIAlertAction(title:"취소", style:.cancel))
+        alert.addAction(UIAlertAction(title:"테스트 전송", style:.default) { [weak self] _ in
             guard let current = core.linkedDevices()?.first(where: { $0.deviceID() == deviceID }),
                   current.isConnected(), current.bleStateByte() == 9 else {
                 self?.log("连接已变化，取消发送"); return
@@ -669,9 +669,9 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
             return
         }
         let targetID = device.deviceID()
-        let alert = UIAlertController(title: "解除这副测试眼镜的绑定？", message: "用于切换回另一台手机。可能清除眼镜内容；电脑录音副本不受影响。执行后停止本 App，并在系统蓝牙中忽略设备。", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
-        alert.addAction(UIAlertAction(title: "确认解绑", style: .destructive) { [weak self] _ in
+        let alert = UIAlertController(title: "이 안경의 등록을 해제할까요?", message: "다른 휴대폰으로 전환할 때 사용합니다. 안경의 내용이 삭제될 수 있으며 PC 녹음 사본은 유지됩니다. 실행 후 앱을 종료하고 Bluetooth 설정에서 기기를 지우세요.", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "취소", style: .cancel))
+        alert.addAction(UIAlertAction(title: "등록 해제 확인", style: .destructive) { [weak self] _ in
             // The alert can remain open while the glasses disconnect. Re-fetch
             // the target and validate its real CBPeripheral immediately before
             // calling the SDK, which otherwise silently performs local cleanup.
@@ -680,7 +680,7 @@ final class ProbeController: UIViewController, CBCentralManagerDelegate, StreamD
                 self?.log("确认时认证连接已失效；拒绝把离线本地清理当作眼镜解绑")
                 return
             }
-            self.logDeviceState(fresh, prefix: "解绑前复核")
+            self.logDeviceState(fresh, prefix: "등록 해제 전 확인")
             self.disableStandby()
             let transport = fresh.transport()
             guard transport.rnSDKPeripheral()?.state == .connected,

@@ -1,0 +1,2 @@
+# Translation fragments intentionally preserve spaces between labels and values.
+localizations/*.tsv whitespace=-blank-at-eol

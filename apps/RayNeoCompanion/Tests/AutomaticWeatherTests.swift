@@ -17,9 +17,9 @@ import XCTest
         let c = AutomaticWeather(defaults:defaults(),device:{device},isBusy:{false},readKey:{nil},
             fetch:{ _,_ in queries += 1; throw WeatherstackError.network },send:{ _,_ in sends += 1 })
         XCTAssertEqual(c.configuration.city,"Beijing, China")
-        c.tick(); XCTAssertTrue(c.status.contains("认证连接"))
+        c.tick(); XCTAssertTrue(c.status.contains("연결 인증"))
         device = "A"; c.tick(); await settle(c)
-        XCTAssertTrue(c.status.contains("缺少 Weatherstack Key"))
+        XCTAssertTrue(c.status.contains("Weatherstack API 키"))
         for _ in 0..<20 { c.tick() }
         XCTAssertEqual(queries,0); XCTAssertEqual(sends,0)
     }
@@ -34,13 +34,13 @@ import XCTest
         XCTAssertEqual(queries,1); XCTAssertEqual(sends,1)
         device = nil; c.tick(); device = "A"; c.tick(); await settle(c)
         XCTAssertEqual(queries,1); XCTAssertEqual(sends,2)
-        XCTAssertTrue(c.status.contains("已提交")); XCTAssertTrue(c.status.contains("镜片仍需确认"))
+        XCTAssertTrue(c.status.contains("전송됨")); XCTAssertTrue(c.status.contains("실제 안경 표시"))
     }
     func testUnknownIconDoesNotGuessAndExplicitMappingReusesResult() async {
         let data = snapshot(Date()); var sends = 0, queries = 0
         let c = AutomaticWeather(defaults:defaults(),device:{"A"},isBusy:{false},readKey:{"test-key"},
             fetch:{ _,_ in queries += 1; return data },send:{ _,_ in sends += 1 })
-        c.tick(); await settle(c); XCTAssertEqual(sends,0); XCTAssertTrue(c.status.contains("尚未核对"))
+        c.tick(); await settle(c); XCTAssertEqual(sends,0); XCTAssertTrue(c.status.contains("확인이 필요"))
         c.confirmIcon(providerCode:122,firmwareCode:100); await settle(c)
         XCTAssertEqual(sends,1); XCTAssertEqual(queries,1)
     }
@@ -91,7 +91,7 @@ import XCTest
         let c = AutomaticWeather(defaults:defaults(),device:{"A"},isBusy:{false},readKey:{"test-key"},
             fetch:{ _,_ in data },send:{ _,_ in throw DeviceFeatureError.disconnected })
         c.confirmIcon(providerCode:122,firmwareCode:100); await settle(c)
-        XCTAssertTrue(c.status.contains("下发失败")); XCTAssertFalse(c.status.contains("已提交"))
+        XCTAssertTrue(c.status.contains("전송에 실패")); XCTAssertFalse(c.status.contains("전송됨"))
     }
     func testSavedCityAndSwitchRestoreWithoutSecretsOrAutomaticNetwork() {
         let storage = defaults()

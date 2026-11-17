@@ -91,6 +91,6 @@ import XCTest
         var calls = 0
         let c = CodexCompanion(defaults: d, key: { _ in "synthetic" }, send: { _, _, _, _ in calls += 1; return Data() })
         let result = await c.executeTool(name: "codex_approve", arguments: "{}", requestID: UUID())
-        XCTAssertEqual(calls, 0); XCTAssertTrue(result.contains("未执行"))
+        XCTAssertEqual(calls, 0); XCTAssertTrue(result.contains("실행하지 않았습니다"))
     }
 }
