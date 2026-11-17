@@ -155,7 +155,8 @@ final class FileASRDiagnostic {
         return try await withTaskCancellationHandler {
             let run: [String: Any] = ["header": ["action": "run-task", "task_id": id, "streaming": "duplex"],
                 "payload": ["task_group": "audio", "task": "asr", "function": "recognition", "model": "qwen-audio-3.0-asr-flash-streaming",
-                            "parameters": ["format": "pcm", "sample_rate": 16000], "input": [:]]]
+                            "parameters": ["format": "pcm", "sample_rate": 16000,
+                                           "language_hints": ["ko", "en"]], "input": [:]]]
             try diagnostic?.record("run-task", String(decoding: JSONSerialization.data(withJSONObject: run), as: UTF8.self))
             try await ws.send(controlMessage(run))
             var accumulator = FileASRAccumulator(), sentAll = false, events = 0

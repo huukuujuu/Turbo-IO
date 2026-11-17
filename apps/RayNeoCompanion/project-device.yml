@@ -50,7 +50,7 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         TARGETED_DEVICE_FAMILY: "1,2"
         MARKETING_VERSION: "0.2.0"
-        CURRENT_PROJECT_VERSION: "5"
+        CURRENT_PROJECT_VERSION: "6"
     info:
       path: Generated/Companion-Info.plist
       properties:
@@ -134,12 +134,12 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "0.2.0"
-        CURRENT_PROJECT_VERSION: "5"
+        CURRENT_PROJECT_VERSION: "6"
     info:
       path: Generated/CompanionDevice-Info.plist
       properties:
         CFBundleDisplayName: Turbo IO
-        CFBundleVersion: "5"
+        CFBundleVersion: "6"
         CFBundleShortVersionString: "0.2.0"
         CFBundleDevelopmentRegion: ko
         CFBundleLocalizations: [ko, en]

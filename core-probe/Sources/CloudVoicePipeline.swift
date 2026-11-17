@@ -94,7 +94,8 @@ final class CloudVoicePipeline {
         let command: [String:Any] = ["header":["action":"run-task","task_id":taskID,"streaming":"duplex"],
             "payload":["task_group":"audio","task":"asr","function":"recognition",
                        "model":"qwen-audio-3.0-asr-flash-streaming",
-                       "parameters":["format":"pcm","sample_rate":16000],"input":[:]]]
+                       "parameters":["format":"pcm","sample_rate":16000,
+                                     "language_hints":["ko","en"]],"input":[:]]]
         receiver = Task { @MainActor [weak self] in
             guard let self else { return }
             do {

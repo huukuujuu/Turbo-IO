@@ -57,6 +57,8 @@ struct ConversationView: View {
             Card {
                 Text("검증된 음성 서비스 조합").font(.headline).foregroundStyle(Palette.ink)
                 FeatureRow(icon: "waveform", title: "Alibaba Cloud 스트리밍 ASR", subtitle: "클라우드 VAD 사용 · 로컬 무음 감지와 중복하지 않음", status: "프로토타입 검증됨")
+                Text("인식 언어 힌트: 한국어·영어. 자동 언어 판별의 오인식을 줄이기 위한 설정이며 다른 언어를 완전히 차단하지는 않습니다.")
+                    .font(.caption).foregroundStyle(Palette.muted)
                 Divider().overlay(Palette.line)
                 FeatureRow(icon: "bolt", title: "DeepSeek V4 Flash", subtitle: "추론 모드 꺼짐 · 스트리밍 텍스트 · 기본 검색 없음", status: "프로토타입 검증됨")
                 Divider().overlay(Palette.line)
